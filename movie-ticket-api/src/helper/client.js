@@ -1,13 +1,18 @@
 import axios from 'axios'
 
 export const sendSuccess = (res, message, data = null) => {
-    let responseJson = {
-        success: true,
-        message: message
-    }
-    if (data) responseJson.data = data
-    return res.status(200).json(responseJson)
-}
+  let responseJson = {
+    success: true,
+    message: message,
+  };
+  if (data) {
+    // Thêm lớp content theo yêu cầu của Frontend
+    responseJson.content = data;
+    // Giữ lại data để tương thích ngược nếu cần
+    responseJson.data = data;
+  }
+  return res.status(200).json(responseJson);
+};
 
 export const sendError = (res, message, code = 400) => {
     return res.status(code).json({
