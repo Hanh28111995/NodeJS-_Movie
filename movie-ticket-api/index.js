@@ -3,8 +3,6 @@ dotenv.config();
 import express from "express";
 import connect from "./src/config/DB.js";
 
-import session from "express-session";
-
 import adminRouter from "./src/router/admin/index.js";
 import customerTicketRouter from "./src/router/customer/index.js"; // Sửa lại import đúng file index
 import authRouter from "./src/router/auth.js";
@@ -47,16 +45,6 @@ app.use(
   })
 );
 
-const store = new session.MemoryStore();
-app.use(
-  session({
-    secret: process.env.SESSION_NAME || "secret",
-    resave: false,
-    saveUninitialized: true,
-    store: store,
-    cookie: { maxAge: SESSION_AGE },
-  })
-);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -82,4 +70,8 @@ app.use("/api/cron", cronRouter);
 // Middleware xử lý lỗi tập trung
 app.use(errorHandler);
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+export default app;
