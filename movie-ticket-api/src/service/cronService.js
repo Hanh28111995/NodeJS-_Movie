@@ -2,11 +2,56 @@ import InforTicket from "../model/inforTicketModel.js";
 import Showtime from "../model/showtimeModel.js";
 
 /**
- * @desc Tự động quét và xử lý các vé chưa thanh toán quá hạn (10 phút)
- * Logic: 
- * 1. Tìm vé có status 'Pending' và thời gian tạo > 10 phút.
- * 2. Cập nhật lại sơ đồ ghế trong Showtime (isBooked = false).
- * 3. Chuyển trạng thái vé sang 'Failed' hoặc xóa vé.
+ * @desc Xử lý dọn dẹp vé hết hạn cho một suất chiếu cụ thể (Lazy Cleanup)
+ * @param {string} movieId 
+ * @param {string} theaterId 
+ * @param {Date} startTime 
+ */
+export const cleanupExpiredTicketsByShowtime = async (movieId, theaterId, startTime) => {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+  // 1. Tìm các vé Pending của suất chiếu này đã quá 10 phút
+  const expiredTickets = await InforTicket.find({
+    id_movie: movieId,
+    id_theater: theaterId,
+    startTime: startTime,
+    paymentStatus: "Pending",
+    createdAt: { $lt: tenMinutesAgo },
+  });
+
+  if (expiredTickets.length === 0) return;
+
+  // 2. Lấy danh sách tất cả các ghế cần giải phóng
+  const seatsToRelease = expiredTickets.flatMap(ticket => ticket.seatName);
+
+  // 3. Cập nhật Showtime một lần duy nhất để giải phóng tất cả ghế
+  const showtime = await Showtime.findOne({
+    movie: movieId,
+    theater: theaterId,
+    startTime: startTime,
+  });
+
+  if (showtime) {
+    showtime.seats = showtime.seats.map(seat => {
+      if (seatsToRelease.includes(seat.seatNumber)) {
+        return { ...seat.toObject(), isBooked: false };
+      }
+      return seat;
+    });
+    await showtime.save();
+  }
+
+  // 4. Cập nhật trạng thái vé sang Failed
+  await InforTicket.updateMany(
+    { _id: { $in: expiredTickets.map(t => t._id) } },
+    { $set: { paymentStatus: "Failed" } }
+  );
+
+  console.log(`Lazy Cleanup: Đã giải phóng ${seatsToRelease.length} ghế cho suất chiếu.`);
+};
+
+/**
+ * @desc Tự động quét và xử lý các vé chưa thanh toán quá hạn (Toàn bộ hệ thống)
  */
 export const cleanupExpiredTickets = async () => {
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -25,8 +70,7 @@ export const cleanupExpiredTickets = async () => {
 
   for (const ticket of expiredTickets) {
     try {
-      // 2. Tìm Showtime tương ứng (Dựa trên id_movie, id_theater và startTime)
-      // Lưu ý: Nếu có showtime_id trực tiếp trong Ticket sẽ chính xác hơn
+      // 2. Tìm Showtime tương ứng
       const showtime = await Showtime.findOne({
         movie: ticket.id_movie,
         theater: ticket.id_theater,

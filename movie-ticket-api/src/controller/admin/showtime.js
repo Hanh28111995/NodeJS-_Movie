@@ -1,6 +1,7 @@
 import { sendSuccess } from "../../helper/client.js";
 import Showtime from "../../model/showtimeModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
+import * as cronService from "../../service/cronService.js";
 
 // CREATE
 export const createShowtime = asyncHandler(async (req, res) => {
@@ -24,6 +25,22 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
     .populate("movie")
     .populate("cinema")
     .populate("theater");
+
+  if (showtime) {
+    // Lazy Cleanup: Dọn dẹp vé hết hạn trước khi trả về dữ liệu ghế
+    await cronService.cleanupExpiredTicketsByShowtime(
+      showtime.movie._id.toString(),
+      showtime.theater._id.toString(),
+      showtime.startTime
+    );
+
+    // Reload lại dữ liệu sau khi dọn dẹp để lấy sơ đồ ghế mới nhất
+    const updatedShowtime = await Showtime.findById(req.params.id)
+      .populate("movie")
+      .populate("cinema")
+      .populate("theater");
+    return sendSuccess(res, "Showtime retrieved successfully", updatedShowtime);
+  }
 
   return sendSuccess(res, "Showtime retrieved successfully", showtime);
 });
