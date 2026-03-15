@@ -1,0 +1,5 @@
+node_modules/
+.env
+src/uploads/
+nodejs-upload-demo-firebase-adminsdk-fbsvc-f915b5bf13.json
+nodejs-upload-demo-firebase-adminsdk-fbsvc-adc899e8c8.json
