@@ -5,8 +5,7 @@ export default async function connect() {
   try {
     mongoose.set('strictQuery', false);
     await mongoose.connect(process.env.MONGO_DB, {
-      useUnifiedTopology: true, // For Mongoose 5 only. Remove for Mongoose 6+
-      serverSelectionTimeoutMS: 1000, // Defaults to 30000 (30 seconds)
+      serverSelectionTimeoutMS: 5000, // Tăng lên 5s để ổn định hơn trên cloud
     })
 
     console.log('connect successfully')

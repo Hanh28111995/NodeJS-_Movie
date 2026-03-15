@@ -32,18 +32,18 @@ generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
   return sendSuccess(res, "Coming soon movies retrieved successfully", formattedMovies);
 }));
 
-generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const movie = await Movie.findById(id).lean();
-  if (!movie) return sendError(res, "Movie not found", 404);
-  return sendSuccess(res, "Movie retrieved successfully", movie);
-}));
-
 generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
   const { title } = req.query;
   const query = title ? { title: { $regex: title, $options: "i" } } : {};
   const movies = await Movie.find(query).sort({ releaseDate: -1 }).lean();
   return sendSuccess(res, "All movies retrieved successfully", movies);
+}));
+
+generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const movie = await Movie.findById(id).lean();
+  if (!movie) return sendError(res, "Movie not found", 404);
+  return sendSuccess(res, "Movie retrieved successfully", movie);
 }));
 
 generalRouter.get("/cinema", asyncHandler(async (req, res) => {
