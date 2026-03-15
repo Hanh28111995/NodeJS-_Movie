@@ -3,17 +3,23 @@ import fs from "fs";
 
 let serviceAccount;
 try {
-  const sdkPath = process.env.FIREBASE_SDK;
-  const fileContent = fs.readFileSync(sdkPath, "utf8");
-  if (!fileContent || fileContent.trim() === "") {
-    throw new Error(`File Firebase SDK rỗng hoặc không tồn tại tại: ${sdkPath}`);
+  const sdkValue = process.env.FIREBASE_SDK;
+  
+  if (!sdkValue) {
+    throw new Error("Biến môi trường FIREBASE_SDK không tồn tại.");
   }
-  serviceAccount = JSON.parse(fileContent);
+
+  // Kiểm tra nếu giá trị là một đường dẫn file (kết thúc bằng .json)
+  if (sdkValue.endsWith(".json")) {
+    const fileContent = fs.readFileSync(sdkValue, "utf8");
+    serviceAccount = JSON.parse(fileContent);
+  } else {
+    // Nếu không phải file, giả định nó là chuỗi JSON trực tiếp
+    serviceAccount = JSON.parse(sdkValue);
+  }
 } catch (error) {
   console.error("CRITICAL ERROR: Không thể tải cấu hình Firebase Admin SDK!");
   console.error("Chi tiết:", error.message);
-  // Trong môi trường development, chúng ta có thể ném lỗi để dừng app
-  // Trong production, bạn phải đảm bảo file này tồn tại và hợp lệ
   if (process.env.NODE_ENV === "production") {
     throw error;
   }
