@@ -6,9 +6,11 @@ import connect from "./src/config/DB.js";
 import session from "express-session";
 
 import adminRouter from "./src/router/admin/index.js";
-import customerTicketRouter from "./src/router/customer/ticket.js";
+import customerTicketRouter from "./src/router/customer/index.js"; // Sửa lại import đúng file index
 import authRouter from "./src/router/auth.js";
 import paymentRouter from "./src/router/payment.js";
+import cronRouter from "./src/router/cron.js";
+import staffRouter from "./src/router/staff/index.js";
 
 
 import {
@@ -70,9 +72,12 @@ app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
 
 app.use("/api/customer", verifyToken, verifyCustomer, customerTicketRouter);
 
+app.use("/api/staff", verifyToken, staffRouter);
+
 app.use("/api/general", generalRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/payment", paymentRouter);
+app.use("/api/cron", cronRouter);
 
 // Middleware xử lý lỗi tập trung
 app.use(errorHandler);

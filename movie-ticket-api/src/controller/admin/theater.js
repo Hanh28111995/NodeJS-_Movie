@@ -1,5 +1,6 @@
 import { sendSuccess } from "../../helper/client.js";
 import Theater from "../../model/theaterModel.js";
+import { generateSeats } from "../../helper/generateSeats.js";
 import asyncHandler from "../../util/asyncHandler.js";
 
 export const getAllTheaters = asyncHandler(async (req, res) => {
@@ -8,6 +9,13 @@ export const getAllTheaters = asyncHandler(async (req, res) => {
 });
 
 export const addTheater = asyncHandler(async (req, res) => {
+  const { totalSeat } = req.body;
+  
+  // Tự động tạo danh sách ghế nếu có thông số rows và cols
+  if (totalSeat && totalSeat.rows && totalSeat.cols) {
+    req.body.seats = await generateSeats(totalSeat.rows, totalSeat.cols);
+  }
+
   const newTheater = await Theater.create(req.body);
   return sendSuccess(res, "Thêm phòng chiếu thành công", newTheater);
 });
