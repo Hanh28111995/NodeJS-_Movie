@@ -10,12 +10,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "customer"],
-      default: "customer", // mặc định
+      enum: ["admin", "customer", "staff"],
+      default: "customer",
     },
     userphone: {
-      type: Number,
-      required: true,
+      type: String, // Đổi sang String để linh hoạt hơn
+      required: false,
+      default: "",
     },
     email: {
       type: String,
@@ -25,7 +26,20 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false, // Optional for OAuth
+    },
+    avatar: {
+      type: String,
+      default: "",
+    },
+    provider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    refreshToken: {
+      type: String,
+      default: "",
     },
     emailVerified: {
       type: Boolean,

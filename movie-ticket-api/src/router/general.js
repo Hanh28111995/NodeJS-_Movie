@@ -1,102 +1,49 @@
-import { sendError, sendServerError, sendSuccess } from "../helper/client.js";
+import { sendSuccess } from "../helper/client.js";
 import express from "express";
 import Movie from "../model/movieModel.js";
 import Cinema from "../model/cinemaModel.js";
 import Showtime from "../model/showtimeModel.js";
-import Theater from "../model/theaterModel.js";
+import asyncHandler from "../util/asyncHandler.js";
 
 const generalRouter = express.Router();
 
-generalRouter.get("/showingMovies", async (req, res) => {
-  try {
-    const now = new Date();
+generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
+  const now = new Date();
+  const showtimes = await Showtime.find({ startTime: { $gte: now } }).populate("movie");
+  const movies = [...new Map(showtimes.map((st) => [st.movie._id.toString(), st.movie])).values()];
+  return sendSuccess(res, "Now showing movies retrieved successfully", movies);
+}));
 
-    const showtimes = await Showtime.find({
-      startTime: { $gte: now },
-    }).populate("movie");
+generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
+  const now = new Date();
+  const showtimes = await Showtime.find({ startTime: { $gt: now } }).populate("movie");
+  const movies = [...new Map(showtimes.map((st) => [st.movie._id.toString(), st.movie])).values()];
+  const formattedMovies = movies.map((m) => ({
+    _id: m._id,
+    title: m.title,
+    banner: m.banner,
+    duration: m.duration,
+    genre: m.genre,
+    releaseDate: m.releaseDate,
+  }));
+  return sendSuccess(res, "Coming soon movies retrieved successfully", formattedMovies);
+}));
 
-    const movies = [
-      ...new Map(
-        showtimes.map((st) => [st.movie._id.toString(), st.movie])
-      ).values(),
-    ];
+generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const movie = await Movie.findById(id);
+  return sendSuccess(res, "Show movie successfully", movie);
+}));
 
-    return sendSuccess(
-      res,
-      "Now showing movies retrieved successfully",
-      movies
-    );
-  } catch (err) {
-    console.error(err);
-    return sendServerError(res);
-  }
-});
+generalRouter.get("/cinema", asyncHandler(async (req, res) => {
+  const cinemas = await Cinema.find();
+  return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
+}));
 
-generalRouter.get("/comingMovies", async (req, res) => {
-  try {
-    const now = new Date();
-    
-    const showtimes = await Showtime.find({ startTime: { $gt: now } }).populate(
-      "movie"
-    );
-
-    const movies = [
-      ...new Map(
-        showtimes.map((st) => [st.movie._id.toString(), st.movie])
-      ).values(),
-    ];
-
-    const formattedMovies = movies.map((m) => ({
-      _id: m._id,
-      title: m.title,
-      poster: m.poster,
-      duration: m.duration,
-      genre: m.genre,
-      releaseDate: m.releaseDate, 
-    }));
-
-    return sendSuccess(
-      res,
-      "Coming soon movies retrieved successfully",
-      formattedMovies
-    );
-  } catch (err) {
-    console.error(err);
-    return sendServerError(res);    
-  }
-});
-
-generalRouter.get("movie/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const movie = await Movie.findById(id);
-    if (!movie) return sendError(res, "Movie not found");
-    return sendSuccess(res, "Show movie successfully", movie);
-  } catch (err) {
-    console.error(err);
-    return sendServerError(res);
-  }
-});
-
-generalRouter.get("/cinema", async (req, res) => {
-  try {
-    const cinemas = await Cinema.find().sort({ name: 1 });
-    return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
-  } catch (err) {
-    console.error(err);
-    return sendServerError(res);
-  }
-});
-
-generalRouter.get("/theaterByCinema", async (req, res) => {
-  try {
-    const theaters = await Cinema.find().populate("theaters").sort({ name: 1 });
-    return sendSuccess(res, "All theaters retrieved successfully", theaters);
-  } catch (err) {
-    console.error(err);
-    return sendServerError(res);
-  }
-});
+generalRouter.get("/theaterByCinema", asyncHandler(async (req, res) => {
+  const theaters = await Cinema.find().populate("theaters");
+  return sendSuccess(res, "All theaters retrieved successfully", theaters);
+}));
 
 generalRouter.get("/theaters/:id", async (req, res) => {
   try {

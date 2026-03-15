@@ -1,51 +1,29 @@
-import {
-  sendServerError,
-  sendSuccess,
-  sendError,
-} from "../../helper/client.js";
+import { sendSuccess } from "../../helper/client.js";
 import Cinema from "../../model/cinemaModel.js";
+import asyncHandler from "../../util/asyncHandler.js";
 
+export const getAllCinemas = asyncHandler(async (req, res) => {
+  const cinemas = await Cinema.find();
+  return sendSuccess(res, "Lấy danh sách rạp phim thành công", cinemas);
+});
 
+export const addCinema = asyncHandler(async (req, res) => {
+  const newCinema = await Cinema.create(req.body);
+  return sendSuccess(res, "Thêm rạp phim thành công", newCinema);
+});
 
-export const addCinema = async (req, res) => {
-  try {
-    // const validate = submitNewMovie(req.body);
-    // if (validate) return sendError(res, 'required fields are missing or invalid');
-    const newCinema = await Cinema.create(req.body);
-    return sendSuccess(res, "Cinema added successfully", newCinema);
-  } catch (err) {    
-    console.log(err);
-    return sendServerError(res);
-  }
-};
+export const updateCinema = asyncHandler(async (req, res) => {
+  const { cinemaId } = req.params;
+  const updatedCinema = await Cinema.findByIdAndUpdate(cinemaId, req.body, {
+    new: true,
+  });
+  return sendSuccess(res, "Cập nhật rạp phim thành công", updatedCinema);
+});
 
-export const updateCinema = async (req, res) => {
-  try {
-    const { cinemaId } = req.params;
-    // const validate = submitNewMovie(req.body);
-    // if (validate) return sendError(res, 'required fields are missing or invalid');
-    const updatedCinema = await Cinema.findByIdAndUpdate(cinemaId, req.body);
-    if (!updatedCinema) return sendError(res, "Cinema not found");
-    return sendSuccess(res, "Cinema updated successfully", updatedCinema);
-  } catch (err) {
-    console.log(err);
-    return sendServerError(res);
-  }
-};
-
-export const deleteCinema = async (req, res) => {
-  try {
-    const { cinemaId } = req.params;
-    const Cinema = await Cinema.findById(id);
-    if (!Cinema) {
-        return sendError(res, "Cinema not found");
-    }
-    const deletedCinema = await Cinema.findByIdAndDelete(cinemaId);
-    return sendSuccess(res, "Cinema deleted successfully");
-  } catch (err) {
-    console.log(err);
-    sendServerError(res);
-  }
-};
+export const deleteCinema = asyncHandler(async (req, res) => {
+  const { cinemaId } = req.params;
+  await Cinema.findByIdAndDelete(cinemaId);
+  return sendSuccess(res, "Xóa rạp phim thành công");
+});
 
 

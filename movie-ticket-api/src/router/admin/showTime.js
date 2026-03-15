@@ -3,46 +3,22 @@ import {
   createShowtime,
   deleteShowtime,
   getAllShowtimes,
+  getShowtimeById,
   updateShowtime,
-} from "../../controller/admin/showtime";
+} from "../../controller/admin/showtime.js";
+import { validateBody } from "../../middleware/validation.js";
+import { submitShowtime } from "../../validation/index.js";
 
 const adminShowTimeRouter = express.Router();
 
-/**
- * @route GET /api/admin/showtime/all
- * @description get all showtimes and details
- * @access private (admin only)
- */
-
 adminShowTimeRouter.get("/all", getAllShowtimes);
-/**
- * @route GET /api/admin/showtime/:id
- * @description get all showtimes and details
- * @access private (admin only)
- */
 
-adminShowTimeRouter.get("/:id", getAllShowtimes);
+adminShowTimeRouter.get("/showtimeDetail/:id", getShowtimeById);
 
+adminShowTimeRouter.post("/add", validateBody(submitShowtime), createShowtime);
 
-/**
- * @route POST /api/admin/showtime/add
- * @description Add a new showtime
- * @access private (admin only)
- */
-adminShowTimeRouter.post("/add", createShowtime);
+adminShowTimeRouter.put("/update/:id", validateBody(submitShowtime), updateShowtime);
 
-/**
- * @route PUT /api/admin/showtime/update/:id
- * @description edit showtime by id
- * @access private (admin only)
- */
-adminShowTimeRouter.put("update/:id", updateShowtime);
-
-/**
- * @route DELETE /api/admin/showtime/delete/:id
- * @description delete showtime by id
- * @access private (admin only)
- */
-adminShowTimeRouter.delete("delete/:id", deleteShowtime);
+adminShowTimeRouter.delete("/delete/:id", deleteShowtime);
 
 export default adminShowTimeRouter;

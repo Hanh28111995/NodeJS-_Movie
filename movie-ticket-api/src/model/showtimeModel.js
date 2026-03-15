@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const seatSchema = new mongoose.Schema({
   seatNumber: { type: String, required: true },

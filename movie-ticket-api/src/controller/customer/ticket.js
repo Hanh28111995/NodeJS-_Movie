@@ -1,41 +1,28 @@
-import InforTicket from "../../model/inforTicketModel.js";
+import { sendSuccess } from "../../helper/client.js";
+import * as ticketService from "../../service/ticketService.js";
+import asyncHandler from "../../util/asyncHandler.js";
 
-export const getMytickets = async (req, res) => {
-  try {
-    const {userName}  = req.params;
-    const tickets = await InforTicket.find({ username: userName });
-    if (!tickets) {
-      return sendError(res, "No tickets found for this user");
-    }
-    return sendSuccess(res, "User tickets retrieved successfully", tickets[0]);
-    } catch (err) {
-        console.log(err);   
-        sendServerError(res);                
-    }
-}
-export const bookMytickets = async (req, res) => {
-    try {
-        const userId  = req.user?.user_id;  
-        const ticketData = { ...req.body, userId: userId };
-        const newTicket = await InforTicket.create(ticketData);
-        return sendSuccess(res, "Ticket booked successfully", newTicket);
-    } catch (err) {
-        console.log(err);   
-        sendServerError(res);                
-    }                       
-}
-export const confirmMytickets = async (req, res) => {
-    try {
-        const { ticketId } = req.body;  
-        const ticket = await InforTicket.findById(ticketId);
-        if (!ticket) {
-            return sendError(res, "Ticket not found");
-        }                       
-        ticket.status = "confirmed";
-        await ticket.save();
-        return sendSuccess(res, "Ticket confirmed successfully", ticket);
-    } catch (err) {
-        console.log(err);   
-        sendServerError(res);                
-    }
-}
+export const getMytickets = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const tickets = await ticketService.getUserTickets(userId);
+  return sendSuccess(res, "User tickets retrieved successfully", tickets);
+});
+
+export const bookMytickets = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const ticketData = { ...req.body, user_id: userId };
+  const newTicket = await ticketService.createTicket(ticketData);
+  return sendSuccess(res, "Ticket booked successfully", newTicket);
+});
+
+export const confirmMytickets = asyncHandler(async (req, res) => {
+  const { ticketId } = req.body;
+  const ticket = await ticketService.confirmTicketPayment(ticketId);
+  return sendSuccess(res, "Ticket confirmed successfully", ticket);
+});
+
+export const cancelMytickets = asyncHandler(async (req, res) => {
+  const { ticketId } = req.body;
+  const ticket = await ticketService.cancelTicket(ticketId);
+  return sendSuccess(res, "Ticket cancelled successfully", ticket);
+});

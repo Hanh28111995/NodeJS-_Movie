@@ -3,7 +3,7 @@ import fs from "fs";
 
 const serviceAccount = JSON.parse(
   fs.readFileSync(
-    "./nodejs-upload-demo-firebase-adminsdk-fbsvc-adc899e8c8.json",
+    process.env.FIREBASE_SDK || "./nodejs-upload-demo-firebase-adminsdk-fbsvc-adc899e8c8.json",
     "utf8"
   )
 );
@@ -13,5 +13,6 @@ admin.initializeApp({
   storageBucket: "nodejs-upload-demo.firebasestorage.app",
 });
 const bucket = admin.storage().bucket();
-export { bucket };
+const auth = admin.auth();
+export { bucket, auth };
 
