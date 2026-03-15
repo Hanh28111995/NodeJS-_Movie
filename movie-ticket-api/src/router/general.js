@@ -32,6 +32,23 @@ generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
   return sendSuccess(res, "Coming soon movies retrieved successfully", formattedMovies);
 }));
 
+generalRouter.get("/showBanners", asyncHandler(async (req, res) => {
+  // Lấy 5 phim mới nhất để làm banner
+  const movies = await Movie.find()
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .select("title banner")
+    .lean();
+  
+  const banners = movies.map(m => ({
+    _id: m._id,
+    title: m.title,
+    banner: m.banner
+  }));
+
+  return sendSuccess(res, "Banners retrieved successfully", banners);
+}));
+
 generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
   const { title } = req.query;
   const query = title ? { title: { $regex: title, $options: "i" } } : {};
