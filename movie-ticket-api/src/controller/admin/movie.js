@@ -3,7 +3,7 @@ import Movie from "../../model/movieModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 
 export const getAllMovies = asyncHandler(async (req, res) => {
-  const movies = await Movie.find().sort({ title: 1 });
+  const movies = await Movie.find().sort({ title: 1 }).lean();
   return sendSuccess(res, "All movies retrieved successfully", movies);
 });
 

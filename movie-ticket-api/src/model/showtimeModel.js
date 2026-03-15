@@ -38,6 +38,9 @@ const showtimeSchema = new mongoose.Schema(
   }
 );
 
+showtimeSchema.index({ movie: 1, startTime: 1 });
+showtimeSchema.index({ cinema: 1, theater: 1 });
+
 const Showtime = mongoose.model("showtime", showtimeSchema);
 
 export default Showtime;

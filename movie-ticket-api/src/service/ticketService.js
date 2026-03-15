@@ -1,11 +1,11 @@
 import InforTicket from "../model/inforTicketModel.js";
 
 export const getAllTickets = async () => {
-  return await InforTicket.find();
+  return await InforTicket.find().lean();
 };
 
 export const getTicketById = async (id) => {
-  return await InforTicket.findById(id);
+  return await InforTicket.findById(id).lean();
 };
 
 export const createTicket = async (ticketData) => {
@@ -17,7 +17,7 @@ export const deleteTicket = async (id) => {
 };
 
 export const getUserTickets = async (userId) => {
-  return await InforTicket.find({ user_id: userId });
+  return await InforTicket.find({ user_id: userId }).sort({ createdAt: -1 }).lean();
 };
 
 export const confirmTicketPayment = async (ticketId) => {

@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const seatTypeSchema = new mongoose.Schema(
   {
@@ -18,7 +18,7 @@ const seatTypeSchema = new mongoose.Schema(
   {
     timestamps: true,
     collection: "seatTypes",
-  }
+  },
 );
 
 const SeatType = mongoose.model("seatTypes", seatTypeSchema);

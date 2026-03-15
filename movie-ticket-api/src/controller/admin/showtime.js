@@ -14,7 +14,8 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
   const showtimes = await Showtime.find()
     .populate("movie")
     .populate("cinema")
-    .populate("theater");
+    .populate("theater")
+    .lean();
 
   return sendSuccess(res, "All showtimes retrieved successfully", showtimes);
 });

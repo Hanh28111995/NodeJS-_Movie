@@ -49,6 +49,9 @@ const inforTicketSchema = new mongoose.Schema({
     collection: 'infoTicket' // specify the collection name here
 });
 
+inforTicketSchema.index({ user_id: 1, createdAt: -1 });
+inforTicketSchema.index({ paymentStatus: 1 });
+
 const InforTicket = mongoose.model('infoTicket', inforTicketSchema);
 
 export default InforTicket;

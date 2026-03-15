@@ -1,5 +1,5 @@
-import SeatType from "../../model/seatTypeModel";
-import { submitSeatType } from "../../validation";
+import SeatType from "../../model/seatTypeModel.js";
+import { submitSeatType } from "../../validation/index.js";
 
 export const getSeatType = async (req, res) => {
     try {

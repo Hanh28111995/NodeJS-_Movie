@@ -1,7 +1,5 @@
-
-
 import express from "express";
-import { addSeatType, deleteSeatType, getSeatType, updateSeatType } from "../../controller/admin/seatType";
+import { addSeatType, deleteSeatType, getSeatType, updateSeatType } from "../../controller/admin/seatType.js";
 
 const adminSeatTypeRouter = express.Router();
 
