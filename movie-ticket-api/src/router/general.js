@@ -79,42 +79,43 @@ generalRouter.get("/cinema", asyncHandler(async (req, res) => {
 
 generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
   // Lấy toàn bộ dữ liệu từ bảng Cinema (cinemas collection)
+  // Frontend cần các trường: _id, branch, address, coordinates
   const cinemas = await Cinema.find().lean();
-  return sendSuccess(res, "Cinema branches retrieved successfully", cinemas);
+  
+  // Ánh xạ lại tên trường nếu trong DB dùng 'cinema' nhưng FE dùng 'branch'
+  const formattedCinemas = cinemas.map(c => ({
+    ...c,
+    branch: c.cinema // Đảm bảo FE nhặt được cinema.branch
+  }));
+
+  return sendSuccess(res, "Cinema branches retrieved successfully", formattedCinemas);
 }));
 
 generalRouter.get("/locations", asyncHandler(async (req, res) => {
-  // Lấy toàn bộ rạp để tính toán vùng miền và cụm rạp (quận/huyện)
   const cinemas = await Cinema.find().select("address").lean();
   
-  /**
-   * Cấu trúc mong muốn của FE:
-   * [
-   *   { 
-   *     vungMien: "TP.HCM", 
-   *     cumRap: ["Quận 1", "Quận 2", ...] 
-   *   },
-   *   ...
-   * ]
-   */
   const locationMap = {};
 
-  cinemas.forEach(c => {
+  cinemas.forEach((c, index) => {
     const parts = c.address.split(",").map(p => p.trim());
     if (parts.length >= 2) {
-      const city = parts[parts.length - 1];     // Ví dụ: "TP.HCM"
-      const district = parts[parts.length - 2]; // Ví dụ: "Quận 1"
+      const city = parts[parts.length - 1];
+      const district = parts[parts.length - 2];
 
       if (!locationMap[city]) {
-        locationMap[city] = new Set();
+        locationMap[city] = {
+          _id: city, // Dùng tên thành phố làm ID tạm cho Select key của FE
+          vungMien: city,
+          cumRap: new Set()
+        };
       }
-      locationMap[city].add(district);
+      locationMap[city].cumRap.add(district);
     }
   });
 
-  const formattedLocations = Object.keys(locationMap).map(city => ({
-    vungMien: city,
-    cumRap: Array.from(locationMap[city])
+  const formattedLocations = Object.values(locationMap).map(item => ({
+    ...item,
+    cumRap: Array.from(item.cumRap)
   }));
   
   return sendSuccess(res, "Locations retrieved successfully", formattedLocations);
