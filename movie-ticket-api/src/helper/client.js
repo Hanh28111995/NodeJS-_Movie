@@ -6,10 +6,8 @@ export const sendSuccess = (res, message, data = null) => {
     message: message,
   };
   if (data) {
-    // Thêm lớp content theo yêu cầu của Frontend
+    // Trả về đúng cấu trúc ban đầu: data chứa content
     responseJson.content = data;
-    // Giữ lại data để tương thích ngược nếu cần
-    responseJson.data = data;
   }
   return res.status(200).json(responseJson);
 };
