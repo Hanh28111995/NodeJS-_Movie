@@ -78,14 +78,18 @@ generalRouter.get("/cinema", asyncHandler(async (req, res) => {
 }));
 
 generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
-  // Lấy toàn bộ dữ liệu từ bảng Cinema (cinemas collection)
-  // Frontend cần các trường: _id, branch, address, coordinates
-  const cinemas = await Cinema.find().lean();
+  const { location } = req.query;
+
+  let query = {};
+  if (location) {
+    query.address = { $regex: location, $options: "i" };
+  }
+
+  const cinemas = await Cinema.find(query).lean();
   
-  // Ánh xạ lại tên trường nếu trong DB dùng 'cinema' nhưng FE dùng 'branch'
   const formattedCinemas = cinemas.map(c => ({
     ...c,
-    branch: c.cinema // Đảm bảo FE nhặt được cinema.branch
+    branch: c.cinema
   }));
 
   return sendSuccess(res, "Cinema branches retrieved successfully", formattedCinemas);
@@ -104,7 +108,7 @@ generalRouter.get("/locations", asyncHandler(async (req, res) => {
 
       if (!locationMap[city]) {
         locationMap[city] = {
-          _id: city, // Dùng tên thành phố làm ID tạm cho Select key của FE
+          _id: city,
           vungMien: city,
           cumRap: new Set()
         };
@@ -134,13 +138,22 @@ generalRouter.get("/theaters/:id", asyncHandler(async (req, res) => {
 }));
 
 generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
-  const { movie, cinema, theater, date } = req.query;
+  const { branch, date, idMovie } = req.query;
 
   let query = {};
 
-  if (movie) query.movie = movie;
-  if (cinema) query.cinema = cinema;
-  if (theater) query.theater = theater;
+  if (idMovie) {
+    query.movie = idMovie;
+  }
+
+  if (branch) {
+    const cinemaDoc = await Cinema.findOne({ cinema: branch }).select("_id").lean();
+    if (cinemaDoc) {
+      query.cinema = cinemaDoc._id;
+    } else {
+      return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
+    }
+  }
 
   if (date) {
     const d1 = new Date(date);
