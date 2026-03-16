@@ -77,6 +77,23 @@ generalRouter.get("/cinema", asyncHandler(async (req, res) => {
   return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
 }));
 
+generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
+  // Lấy danh sách các hệ thống rạp (ví dụ: CGV, BHD, Lotte)
+  const branches = await Cinema.distinct("cinema");
+  return sendSuccess(res, "Cinema branches retrieved successfully", branches);
+}));
+
+generalRouter.get("/locations", asyncHandler(async (req, res) => {
+  // Lấy danh sách các tỉnh thành từ địa chỉ (giả định tỉnh thành nằm ở cuối địa chỉ sau dấu phẩy cuối cùng)
+  const cinemas = await Cinema.find().select("address").lean();
+  const locations = [...new Set(cinemas.map(c => {
+    const parts = c.address.split(",");
+    return parts[parts.length - 1].trim();
+  }))];
+  
+  return sendSuccess(res, "Locations retrieved successfully", locations);
+}));
+
 generalRouter.get("/theaterByCinema", asyncHandler(async (req, res) => {
   const theaters = await Cinema.find().populate("theaters").lean();
   return sendSuccess(res, "All theaters retrieved successfully", theaters);

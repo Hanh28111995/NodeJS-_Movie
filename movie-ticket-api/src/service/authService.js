@@ -85,15 +85,28 @@ export const refreshToken = async (token) => {
 };
 
 export const googleLogin = async (idToken) => {
+  console.log("--- Google Login Debug ---");
+  console.log("idToken type:", typeof idToken);
+  console.log("idToken length:", idToken ? idToken.length : 0);
+
+  if (!idToken) {
+    throw new Error("idToken is missing in request body");
+  }
+
+  if (!firebaseAuth) {
+    throw new Error("Firebase Admin SDK chưa được cấu hình đúng. Vui lòng kiểm tra biến môi trường FIREBASE_SDK.");
+  }
+
   try {
     const decodedToken = await firebaseAuth.verifyIdToken(idToken);
+    console.log("Decoded Token email:", decodedToken.email);
     const { email, name, picture, uid } = decodedToken;
 
     let user = await User.findOne({ email });
 
     if (!user) {
       user = new User({
-        username: name || email.split("@")[0] + "_" + uid.substring(0, 5),
+        username: name || (email ? email.split("@")[0] : "user") + "_" + uid.substring(0, 5),
         email,
         avatar: picture,
         provider: "google",
@@ -138,6 +151,7 @@ export const googleLogin = async (idToken) => {
       refreshToken,
     };
   } catch (error) {
-    throw new Error("Invalid Google token");
+    console.error("Lỗi xác thực Google Token:", error.message);
+    throw new Error(`Xác thực Google thất bại: ${error.message}`);
   }
 };

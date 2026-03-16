@@ -9,13 +9,15 @@ try {
     throw new Error("Biến môi trường FIREBASE_SDK không tồn tại.");
   }
 
-  // Kiểm tra nếu giá trị là một đường dẫn file (kết thúc bằng .json)
-  if (sdkValue.endsWith(".json")) {
+  if (sdkValue.trim().startsWith("{")) {
+    // Nếu là chuỗi JSON trực tiếp
+    serviceAccount = JSON.parse(sdkValue);
+  } else if (sdkValue.endsWith(".json")) {
+    // Nếu là đường dẫn file
     const fileContent = fs.readFileSync(sdkValue, "utf8");
     serviceAccount = JSON.parse(fileContent);
   } else {
-    // Nếu không phải file, giả định nó là chuỗi JSON trực tiếp
-    serviceAccount = JSON.parse(sdkValue);
+    throw new Error("Định dạng FIREBASE_SDK không hợp lệ (phải là JSON string hoặc đường dẫn .json)");
   }
 } catch (error) {
   console.error("CRITICAL ERROR: Không thể tải cấu hình Firebase Admin SDK!");

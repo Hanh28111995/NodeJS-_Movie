@@ -48,8 +48,8 @@ export const refreshToken = asyncHandler(async (req, res) => {
 });
 
 export const googleLogin = asyncHandler(async (req, res) => {
-  const { idToken } = req.body;
-  const result = await authService.googleLogin(idToken);
+  const { token } = req.body;
+  const result = await authService.googleLogin(token);
 
   res.cookie("refreshToken", result.refreshToken, {
     httpOnly: true,
