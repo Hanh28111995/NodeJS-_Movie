@@ -78,20 +78,46 @@ generalRouter.get("/cinema", asyncHandler(async (req, res) => {
 }));
 
 generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
-  // Lấy danh sách các hệ thống rạp (ví dụ: CGV, BHD, Lotte)
-  const branches = await Cinema.distinct("cinema");
-  return sendSuccess(res, "Cinema branches retrieved successfully", branches);
+  // Lấy toàn bộ dữ liệu từ bảng Cinema (cinemas collection)
+  const cinemas = await Cinema.find().lean();
+  return sendSuccess(res, "Cinema branches retrieved successfully", cinemas);
 }));
 
 generalRouter.get("/locations", asyncHandler(async (req, res) => {
-  // Lấy danh sách các tỉnh thành từ địa chỉ rạp
+  // Lấy toàn bộ rạp để tính toán vùng miền và cụm rạp (quận/huyện)
   const cinemas = await Cinema.find().select("address").lean();
-  const locations = [...new Set(cinemas.map(c => {
-    const addressParts = c.address.split(",");
-    return addressParts[addressParts.length - 1].trim();
-  }))];
   
-  return sendSuccess(res, "Locations retrieved successfully", locations);
+  /**
+   * Cấu trúc mong muốn của FE:
+   * [
+   *   { 
+   *     vungMien: "TP.HCM", 
+   *     cumRap: ["Quận 1", "Quận 2", ...] 
+   *   },
+   *   ...
+   * ]
+   */
+  const locationMap = {};
+
+  cinemas.forEach(c => {
+    const parts = c.address.split(",").map(p => p.trim());
+    if (parts.length >= 2) {
+      const city = parts[parts.length - 1];     // Ví dụ: "TP.HCM"
+      const district = parts[parts.length - 2]; // Ví dụ: "Quận 1"
+
+      if (!locationMap[city]) {
+        locationMap[city] = new Set();
+      }
+      locationMap[city].add(district);
+    }
+  });
+
+  const formattedLocations = Object.keys(locationMap).map(city => ({
+    vungMien: city,
+    cumRap: Array.from(locationMap[city])
+  }));
+  
+  return sendSuccess(res, "Locations retrieved successfully", formattedLocations);
 }));
 
 generalRouter.get("/theaterByCinema", asyncHandler(async (req, res) => {
