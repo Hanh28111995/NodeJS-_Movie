@@ -66,7 +66,7 @@ export const verifyToken = async (req, res, next) => {
     if (!payload.id) return sendError(res, "Unauthorized.", 401);
 
     req.verifyToken = token;
-    req.user = payload.user;
+    req.user = payload;
     next();
   } catch (error) {
     console.log(error);    
