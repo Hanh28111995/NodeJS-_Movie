@@ -39,7 +39,7 @@ generalRouter.get("/showBanners", asyncHandler(async (req, res) => {
     .limit(5)
     .select("title banner")
     .lean();
-  
+
   const banners = movies.map(m => ({
     _id: m._id,
     title: m.title,
@@ -58,7 +58,7 @@ generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
 
 generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
   const { id } = req.params;
-  
+
   // Kiểm tra nếu ID là "all" thì bỏ qua (phòng trường hợp lỗi cache route)
   if (id === "all") {
     const { title } = req.query;
@@ -86,10 +86,12 @@ generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
   }
 
   const cinemas = await Cinema.find(query).lean();
-  
+
   const formattedCinemas = cinemas.map(c => ({
-    ...c,
-    branch: c.cinema
+    branch: c.branch,
+    cinemaName: c.cinemaName,
+    address: c.address,
+    coordinates: c.coordinates
   }));
 
   return sendSuccess(res, "Cinema branches retrieved successfully", formattedCinemas);
@@ -97,7 +99,7 @@ generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
 
 generalRouter.get("/locations", asyncHandler(async (req, res) => {
   const cinemas = await Cinema.find().select("address").lean();
-  
+
   const locationMap = {};
 
   cinemas.forEach((c, index) => {
@@ -121,7 +123,7 @@ generalRouter.get("/locations", asyncHandler(async (req, res) => {
     ...item,
     cumRap: Array.from(item.cumRap)
   }));
-  
+
   return sendSuccess(res, "Locations retrieved successfully", formattedLocations);
 }));
 
@@ -147,7 +149,11 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   }
 
   if (branch) {
-    const cinemaDoc = await Cinema.findOne({ cinema: branch }).select("_id").lean();
+    const cinemaDoc = await Cinema.findOne({
+      $or: [{ cinemaName: branch }, { branch: branch }],
+    })
+      .select("_id")
+      .lean();
     if (cinemaDoc) {
       query.cinema = cinemaDoc._id;
     } else {
