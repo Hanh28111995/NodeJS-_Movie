@@ -10,7 +10,9 @@ export const getAllTheaters = asyncHandler(async (req, res) => {
 
 export const getTheaterById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const theater = await Theater.findById(id).populate("cinema");
+  const theater = await Theater.findById(id)
+    .populate("cinema")
+    .populate("seats.seatType");
   if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
   return sendSuccess(res, "Lấy thông tin phòng chiếu thành công", theater);
 });
