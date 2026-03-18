@@ -13,7 +13,7 @@ export const addCinema = asyncHandler(async (req, res) => {
 });
 
 export const updateCinema = asyncHandler(async (req, res) => {
-  const { cinemaId } = req.params;
+  const { cinemaId } = req.body;
   const updatedCinema = await Cinema.findByIdAndUpdate(cinemaId, req.body, {
     new: true,
   });
