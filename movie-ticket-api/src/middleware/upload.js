@@ -27,14 +27,11 @@ const uploadBanner = multer({
 });
 
 export const handleUploadBanner = (req, res, next) => {
-  console.log("✅ Step 2: multer bắt đầu upload...");
-
-  uploadBanner.single("file")(req, res, (err) => {
+  uploadBanner.single("File")(req, res, (err) => {
     if (err) {
       console.log("❌ Lỗi upload:", err.message);
       return res.status(400).json({ message: err.message });
     }
-    console.log("✅ Step 2: multer upload xong");
     next();
   });
 };
