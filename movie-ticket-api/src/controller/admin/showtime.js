@@ -7,7 +7,8 @@ import * as cronService from "../../service/cronService.js";
 
 // CREATE
 export const createShowtime = asyncHandler(async (req, res) => {
-  const { theater: theaterId, id_movie, startTime } = req.body;
+  const { theater: theaterId, movie, startTime } = req.body;
+  const movieId = movie;
 
   const theater = await Theater.findById(theaterId).lean();
   if (!theater) return sendError(res, "Theater not found", 404);
@@ -20,7 +21,7 @@ export const createShowtime = asyncHandler(async (req, res) => {
   }));
 
   const showtime = await Showtime.create({
-    id_movie,
+    id_movie: movieId,
     theater: theaterId,
     cinema: theater.cinema,
     startTime,
