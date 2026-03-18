@@ -4,7 +4,7 @@ const seatSchema = new mongoose.Schema({
   seatNumber: { type: String, required: true },
   seatType: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "SeatType",
+    ref: "seatTypes",
     required: true,
   },
   isBooked: { type: Boolean, default: false },
@@ -14,17 +14,17 @@ const showtimeSchema = new mongoose.Schema(
   {
     movie: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "movie",      // sửa lại
+      ref: "movies",
       required: true,
     },
     cinema: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "cinema",     // sửa lại
+      ref: "cinemas",
       required: true,
     },
     theater: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "theater",     // sửa lại
+      ref: "theater",
       required: true,
     },
 

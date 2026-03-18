@@ -13,7 +13,7 @@ const cinemaSchema = new mongoose.Schema(
     theaters: [
       {
         type: mongoose.Schema.Types.ObjectId,   
-        ref: "theaters",
+        ref: "theater",
       },
     ],  
   },

@@ -3,17 +3,16 @@ import mongoose from "mongoose";
 const inforTicketSchema = new mongoose.Schema({
     user_id: {
         type: mongoose.Schema.Types.String,
-        ref: 'User',
+        ref: 'users',
         required: true
     },
     id_movie: {
         type: mongoose.Schema.Types.String,
-        ref: 'theater',
+        ref: 'movies',
         required: true
     },    
     startTime: {
           type: mongoose.Schema.Types.Date,
-          ref: "theater",
           required: true,
         },
     id_theater: {
