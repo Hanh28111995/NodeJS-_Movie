@@ -31,7 +31,7 @@ export const submitShowtime = (data) => {
   const error = new Error();
   error    
     .isRequired(data.theater, "theater")
-    .isRequired(data.movie || data.id_movie, "movie")    
+    .isRequired(data.id_movie, "id_movie")    
     .isRequired(data.startTime, "startTime");
   return error.get();
 };

@@ -7,29 +7,47 @@ import * as cronService from "../../service/cronService.js";
 
 // CREATE
 export const createShowtime = asyncHandler(async (req, res) => {
-  const { theater: theaterId, movie, startTime } = req.body;
-  const movieId = movie;
+  const { theater: theaterId, id_movie: movieId, startTime } = req.body;
 
+  // 1. Kiểm tra phòng chiếu tồn tại
+  // Không dùng .lean() ở đây nếu bạn cần truy cập vào sub-documents phức tạp, 
+  // nhưng ở đây dùng .lean() là ổn để lấy data nhanh.
   const theater = await Theater.findById(theaterId).lean();
-  if (!theater) return sendError(res, "Theater not found", 404);
-  if (!theater.cinema) return sendError(res, "Theater has no cinema assigned", 400);
+  if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
+  
+  // Kiểm tra rạp (cinema) có tồn tại trong phòng không
+  const cinemaId = theater.cinema?._id || theater.cinema;
+  if (!cinemaId) return sendError(res, "Phòng chiếu này chưa được gán vào cụm rạp", 400);
 
-  // Generate seats từ theater, reset isBooked về false
-  const seats = theater.seats.map(({ seatNumber, seatType }) => ({
-    seatNumber,
-    seatType,
-    isBooked: false,
+  // 2. Kiểm tra trùng lịch (Logic cơ bản: cùng phòng, cùng giờ)
+  const isExisted = await Showtime.findOne({
+    theater: theaterId,
+    startTime: startTime
+  });
+  if (isExisted) return sendError(res, "Khung giờ này tại phòng chiếu đã có suất chiếu khác", 400);
+
+  // 3. Clone danh sách ghế từ Theater sang Showtime
+  // Đảm bảo theater.seats có dữ liệu
+  if (!theater.seats || theater.seats.length === 0) {
+    return sendError(res, "Phòng chiếu chưa có cấu hình ghế mặc định", 400);
+  }
+
+  const seats = theater.seats.map((s) => ({
+    seatNumber: s.seatNumber,
+    seatType: s.seatType,
+    isBooked: false, // Tất cả ghế mới đều chưa đặt
   }));
 
+  // 4. Tạo suất chiếu
   const showtime = await Showtime.create({
     id_movie: movieId,
     theater: theaterId,
-    cinema: theater.cinema,
+    cinema: cinemaId,
     startTime,
     seats,
   });
 
-  return sendSuccess(res, "Showtime created successfully", showtime);
+  return sendSuccess(res, "Tạo suất chiếu mới thành công", showtime);
 });
 
 // GET ALL
