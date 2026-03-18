@@ -4,7 +4,10 @@ import Error from "../helper/error.js";
 
 export const submitNewCinema = (data) => {
   const error = new Error();
-  error.isRequired(data.name, "name").isRequired(data.address, "address");
+  error
+    .isRequired(data.cinemaName, "cinemaName")
+    .isRequired(data.branch, "branch")
+    .isRequired(data.address, "address");
   return error.get();
 };
 
