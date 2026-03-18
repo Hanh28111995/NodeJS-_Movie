@@ -12,15 +12,15 @@ const generalRouter = express.Router();
 
 generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
   const now = new Date();
-  const showtimes = await Showtime.find({ startTime: { $gte: now } }).populate("movie").lean();
-  const movies = [...new Map(showtimes.map((st) => [st.movie._id.toString(), st.movie])).values()];
+  const showtimes = await Showtime.find({ startTime: { $gte: now } }).populate("id_movie").lean();
+  const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
   return sendSuccess(res, "Now showing movies retrieved successfully", movies);
 }));
 
 generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
   const now = new Date();
-  const showtimes = await Showtime.find({ startTime: { $gt: now } }).populate("movie").lean();
-  const movies = [...new Map(showtimes.map((st) => [st.movie._id.toString(), st.movie])).values()];
+  const showtimes = await Showtime.find({ startTime: { $gt: now } }).populate("id_movie").lean();
+  const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
   const formattedMovies = movies.map((m) => ({
     _id: m._id,
     title: m.title,
@@ -175,7 +175,7 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   }
 
   const showtimes = await Showtime.find(query)
-    .populate("movie")
+    .populate("id_movie")
     .populate("cinema")
     .populate("theater")
     .lean();

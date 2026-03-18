@@ -1,5 +1,6 @@
 import { sendSuccess } from "../../helper/client.js";
 import Showtime from "../../model/showtimeModel.js";
+import Movie from "../../model/movieModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import * as cronService from "../../service/cronService.js";
 
@@ -12,38 +13,48 @@ export const createShowtime = asyncHandler(async (req, res) => {
 // GET ALL
 export const getAllShowtimes = asyncHandler(async (req, res) => {
   const showtimes = await Showtime.find()
-    .populate("movie", "title")
     .populate("cinema")
     .populate("theater")
     .lean();
 
-  return sendSuccess(res, "All showtimes retrieved successfully", showtimes);
+  const movieIds = [...new Set(showtimes.map(st => st.id_movie?.toString()).filter(Boolean))];
+  const movies = await Movie.find({ _id: { $in: movieIds } }).select("_id title").lean();
+  const movieMap = Object.fromEntries(movies.map(m => [m._id.toString(), m]));
+
+  const result = showtimes.map(st => ({
+    ...st,
+    id_movie: movieMap[st.id_movie?.toString()] || st.id_movie,
+  }));
+
+  return sendSuccess(res, "All showtimes retrieved successfully", result);
 });
 
 // GET ONE
 export const getShowtimeById = asyncHandler(async (req, res) => {
   const showtime = await Showtime.findById(req.params.id)
-    .populate("movie", "title")
     .populate("cinema")
-    .populate("theater");
+    .populate("theater")
+    .lean();
 
-  if (showtime) {
-    // Lazy Cleanup: Dọn dẹp vé hết hạn trước khi trả về dữ liệu ghế
-    await cronService.cleanupExpiredTicketsByShowtime(
-      showtime.movie._id.toString(),
-      showtime.theater._id.toString(),
-      showtime.startTime,
-    );
+  if (!showtime) return sendSuccess(res, "Showtime retrieved successfully", showtime);
 
-    // Reload lại dữ liệu sau khi dọn dẹp để lấy sơ đồ ghế mới nhất
-    const updatedShowtime = await Showtime.findById(req.params.id)
-      .populate("movie","title")
-      .populate("cinema")
-      .populate("theater");
-    return sendSuccess(res, "Showtime retrieved successfully", updatedShowtime);
-  }
+  const movie = await Movie.findById(showtime.id_movie).select("_id title").lean();
 
-  return sendSuccess(res, "Showtime retrieved successfully", showtime);
+  await cronService.cleanupExpiredTicketsByShowtime(
+    showtime.id_movie?.toString(),
+    showtime.theater._id.toString(),
+    showtime.startTime,
+  );
+
+  const updatedShowtime = await Showtime.findById(req.params.id)
+    .populate("cinema")
+    .populate("theater")
+    .lean();
+
+  return sendSuccess(res, "Showtime retrieved successfully", {
+    ...updatedShowtime,
+    id_movie: movie || updatedShowtime.id_movie,
+  });
 });
 
 // UPDATE

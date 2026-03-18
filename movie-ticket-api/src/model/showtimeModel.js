@@ -12,7 +12,7 @@ const seatSchema = new mongoose.Schema({
 
 const showtimeSchema = new mongoose.Schema(
   {
-    movie: {
+    id_movie: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "movies",
       required: true,
