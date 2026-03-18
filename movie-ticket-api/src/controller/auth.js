@@ -38,9 +38,22 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const refreshToken = asyncHandler(async (req, res) => {
-  const token = req.cookies.refreshToken || (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  const newAccessToken = await authService.refreshToken(token);
+  // 1. CHỈ lấy refreshToken từ Cookie (Chìa khóa 7 ngày của bạn)
+  const rToken = req.cookies.refreshToken;
 
+  if (!rToken) {
+    // Nếu không có chìa khóa, bắt buộc phải login lại (401)
+    return res.status(401).json({
+      success: false,
+      message: "Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.",
+    });
+  }
+
+  // 2. Gọi service để verify rToken và tạo Access Token mới (10 phút)
+  // Lưu ý: Đảm bảo authService.refreshToken trả về chuỗi token nguyên bản
+  const newAccessToken = await authService.refreshToken(rToken);
+
+  // 3. Trả về đúng cấu trúc để FE dễ lấy (bọc trong 'content' nếu FE dùng res.data.content)
   return sendSuccess(res, "Access token refreshed successfully", {
     accessToken: newAccessToken,
   });
