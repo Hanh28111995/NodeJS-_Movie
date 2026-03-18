@@ -12,10 +12,19 @@ export const sendSuccess = (res, message, data = null) => {
   return res.status(200).json(responseJson);
 };
 
-export const sendError = (res, message, errors = null, code = 400) => {
-    const body = { success: false, message: message };
-    if (errors) body.errors = errors;
-    return res.status(code).json(body);
+export const sendError = (res, message, code = 400) => {
+    return res.status(code).json({
+        success: false,
+        message: message
+    });
+}
+
+export const sendErrorWithDetails = (res, message, errors, code = 400) => {
+    return res.status(code).json({
+        success: false,
+        message: message,
+        errors: errors
+    });
 }
 
 export const sendServerError = res =>
