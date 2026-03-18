@@ -19,7 +19,8 @@ export const login = asyncHandler(async (req, res) => {
 
 export const logout = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
-  await authService.logout(refreshToken);
+  const accessToken = req.headers["authorization"]?.split(" ")[1];
+  await authService.logout(refreshToken, accessToken);
 
   res.clearCookie("refreshToken", {
     httpOnly: true,

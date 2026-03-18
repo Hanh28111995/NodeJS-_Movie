@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../model/userModel.js";
 import { auth as firebaseAuth } from "../middleware/firebase.js";
+import { TOKEN_BLACKLIST } from "../../index.js";
 
 const generateToken = (payload, secret, expiresIn) => {
   return jwt.sign(payload, secret, { expiresIn });
@@ -46,9 +47,12 @@ export const login = async (username, password) => {
   };
 };
 
-export const logout = async (refreshToken) => {
+export const logout = async (refreshToken, accessToken) => {
   if (refreshToken) {
     await User.updateOne({ refreshToken }, { $set: { refreshToken: "" } });
+  }
+  if (accessToken) {
+    TOKEN_BLACKLIST.add(accessToken);
   }
 };
 
@@ -71,17 +75,23 @@ export const register = async (userData) => {
 export const refreshToken = async (token) => {
   if (!token) throw new Error("Missing refresh token");
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET_KEY);
-    const newAccessToken = jwt.sign(
-      { id: decoded.id, username: decoded.username, role: decoded.role },
-      process.env.JWT_SECRET_KEY,
-      { expiresIn: "30m" }
-    );
-    return newAccessToken;
+    decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET_KEY);
   } catch (err) {
     throw new Error("Invalid or expired refresh token");
   }
+
+  // Kiểm tra refresh token có tồn tại trong DB không (tránh dùng token đã logout)
+  const user = await User.findOne({ refreshToken: token });
+  if (!user) throw new Error("Refresh token has been revoked");
+
+  const newAccessToken = jwt.sign(
+    { id: decoded.id, username: decoded.username, role: decoded.role },
+    process.env.JWT_SECRET_KEY,
+    { expiresIn: "10m" }
+  );
+  return newAccessToken;
 };
 
 export const googleLogin = async (idToken) => {

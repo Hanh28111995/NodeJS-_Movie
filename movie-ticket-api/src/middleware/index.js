@@ -54,7 +54,7 @@ export const verifyToken = async (req, res, next) => {
     const token = data?.split(" ")[1];
     if (!token) return sendError(res, "jwt must be provided.", 401);
 
-    if (token in TOKEN_BLACKLIST)
+    if (TOKEN_BLACKLIST.has(token))
       return sendError(res, "Unauthorized.", 401);
 
     const decoded = jwt.verify(token, JWT_SECRET_KEY, {

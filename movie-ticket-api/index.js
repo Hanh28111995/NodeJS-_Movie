@@ -26,7 +26,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 
 export const TOKEN_LIST = [];
-export const TOKEN_BLACKLIST = [];
+export const TOKEN_BLACKLIST = new Set();
 
 const PORT = process.env.PORT || 5000;
 const DEV = process.env.NODE_ENV == 1;
