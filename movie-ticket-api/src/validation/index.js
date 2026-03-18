@@ -20,9 +20,8 @@ export const submitNewTheater = (data) => {
   const error = new Error();
   error
     .isRequired(data.name, "name")
-    .isRequired(data.cinema, "cinema")
-    .isRequired(data.totalSeats, "totalSeats")
-    .isRequired(data.seats, "seats")
+    .isRequired(data.cinemaName, "cinemaName")
+    .isRequired(data.totalSeat, "totalSeat")
     .isRequired(data.description, "description");
   return error.get();
 };
