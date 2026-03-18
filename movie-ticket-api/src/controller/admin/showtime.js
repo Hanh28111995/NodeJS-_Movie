@@ -12,7 +12,7 @@ export const createShowtime = asyncHandler(async (req, res) => {
 // GET ALL
 export const getAllShowtimes = asyncHandler(async (req, res) => {
   const showtimes = await Showtime.find()
-    .populate("movie")
+    .populate("movie", "title")
     .populate("cinema")
     .populate("theater")
     .lean();
@@ -23,7 +23,7 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
 // GET ONE
 export const getShowtimeById = asyncHandler(async (req, res) => {
   const showtime = await Showtime.findById(req.params.id)
-    .populate("movie")
+    .populate("movie", "title")
     .populate("cinema")
     .populate("theater");
 
@@ -32,12 +32,12 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
     await cronService.cleanupExpiredTicketsByShowtime(
       showtime.movie._id.toString(),
       showtime.theater._id.toString(),
-      showtime.startTime
+      showtime.startTime,
     );
 
     // Reload lại dữ liệu sau khi dọn dẹp để lấy sơ đồ ghế mới nhất
     const updatedShowtime = await Showtime.findById(req.params.id)
-      .populate("movie")
+      .populate("movie","title")
       .populate("cinema")
       .populate("theater");
     return sendSuccess(res, "Showtime retrieved successfully", updatedShowtime);
