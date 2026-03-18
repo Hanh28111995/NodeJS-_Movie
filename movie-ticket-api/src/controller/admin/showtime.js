@@ -2,6 +2,7 @@ import { sendSuccess, sendError } from "../../helper/client.js";
 import Showtime from "../../model/showtimeModel.js";
 import Movie from "../../model/movieModel.js";
 import Theater from "../../model/theaterModel.js";
+import Cinema from "../../model/cinemaModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import * as cronService from "../../service/cronService.js";
 
@@ -9,15 +10,14 @@ import * as cronService from "../../service/cronService.js";
 export const createShowtime = asyncHandler(async (req, res) => {
   const { theater: theaterId, id_movie: movieId, startTime } = req.body;
 
-  // 1. Kiểm tra phòng chiếu tồn tại
-  // Không dùng .lean() ở đây nếu bạn cần truy cập vào sub-documents phức tạp, 
-  // nhưng ở đây dùng .lean() là ổn để lấy data nhanh.
   const theater = await Theater.findById(theaterId).lean();
   if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
-  
-  // Kiểm tra rạp (cinema) có tồn tại trong phòng không
-  const cinemaId = theater.cinema?._id || theater.cinema;
-  if (!cinemaId) return sendError(res, "Phòng chiếu này chưa được gán vào cụm rạp", 400);
+
+  // Tìm cinema theo cinemaName trong theater
+  const cinema = await Cinema.findOne({ cinemaName: theater.cinemaName }).lean();
+  if (!cinema) return sendError(res, "Không tìm thấy cụm rạp có phòng chiếu này", 400);
+  const cinemaId = cinema._id;
+
 
   // 2. Kiểm tra trùng lịch (Logic cơ bản: cùng phòng, cùng giờ)
   const isExisted = await Showtime.findOne({

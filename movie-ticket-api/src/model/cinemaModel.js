@@ -1,25 +1,26 @@
 import mongoose from "mongoose";
 
 const cinemaSchema = new mongoose.Schema(
-  {    
-    cinema: {
+  {
+    cinemaName: {
       type: String,
-      required: true,       
+      required: true,
+    },
+    branch: {
+      type: String,
+      required: true,
     },
     address: {
       type: String,
-      required: true,       
+      required: true,
     },
-    theaters: [
-      {
-        type: mongoose.Schema.Types.ObjectId,   
-        ref: "theater",
-      },
-    ],  
+    coordinates: {
+      type: [Number],
+    },
   },
   {
     timestamps: true,
-    collection: "cinemas", // specify the collection name here
+    collection: "cinemas",
   }
 );
 
