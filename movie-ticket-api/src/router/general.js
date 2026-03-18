@@ -59,7 +59,6 @@ generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
 generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // Kiểm tra nếu ID là "all" thì bỏ qua (phòng trường hợp lỗi cache route)
   if (id === "all") {
     const { title } = req.query;
     const query = title ? { title: { $regex: title, $options: "i" } } : {};
@@ -67,7 +66,14 @@ generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
     return sendSuccess(res, "All movies retrieved successfully", movies);
   }
 
-  const movie = await Movie.findById(id).lean();
+  // Tìm theo id_movie (nanoid) hoặc _id (ObjectId)
+  const movie = await Movie.findOne({
+    $or: [
+      { id_movie: id },
+      ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : [])
+    ]
+  }).lean();
+
   if (!movie) return sendError(res, "Movie not found", 404);
   return sendSuccess(res, "Movie retrieved successfully", movie);
 }));
