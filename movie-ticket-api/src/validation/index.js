@@ -30,11 +30,9 @@ export const submitNewTheater = (data) => {
 export const submitShowtime = (data) => {
   const error = new Error();
   error    
-    .isRequired(data.cinema, "cinema")
     .isRequired(data.theater, "theater")
-    .isRequired(data.movie, "movie")    
-    .isRequired(data.startTime, "startTime")    
-    .isRequired(data.seats, "seats");
+    .isRequired(data.id_movie, "id_movie")    
+    .isRequired(data.startTime, "startTime");
   return error.get();
 };
 

@@ -1,12 +1,32 @@
-import { sendSuccess } from "../../helper/client.js";
+import { sendSuccess, sendError } from "../../helper/client.js";
 import Showtime from "../../model/showtimeModel.js";
 import Movie from "../../model/movieModel.js";
+import Theater from "../../model/theaterModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import * as cronService from "../../service/cronService.js";
 
 // CREATE
 export const createShowtime = asyncHandler(async (req, res) => {
-  const showtime = await Showtime.create(req.body);
+  const { theater: theaterId, id_movie, startTime } = req.body;
+
+  const theater = await Theater.findById(theaterId).lean();
+  if (!theater) return sendError(res, "Theater not found", 404);
+
+  // Generate seats từ theater, reset isBooked về false
+  const seats = theater.seats.map(({ seatNumber, seatType }) => ({
+    seatNumber,
+    seatType,
+    isBooked: false,
+  }));
+
+  const showtime = await Showtime.create({
+    id_movie,
+    theater: theaterId,
+    cinema: theater.cinema,
+    startTime,
+    seats,
+  });
+
   return sendSuccess(res, "Showtime created successfully", showtime);
 });
 
