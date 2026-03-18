@@ -15,7 +15,7 @@ adminMoviesRouter.get("/allMovies", getAllMovies);
 
 adminMoviesRouter.post("/add", handleUploadBanner, validateBody(submitNewMovie), addMovie);
 
-adminMoviesRouter.put("/update/:movieid", validateBody(submitNewMovie), updateMovie);
+adminMoviesRouter.put("/update/:movieid", handleUploadBanner, validateBody(submitNewMovie), updateMovie);
 
 adminMoviesRouter.delete("/delete/:movieid", deleteMovie);
 

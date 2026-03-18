@@ -30,12 +30,55 @@ export const addMovie = asyncHandler(async (req, res) => {
 
 export const updateMovie = asyncHandler(async (req, res) => {
   const { movieid } = req.params;
-  const updatedMovie = await Movie.findByIdAndUpdate(movieid, req.body, { new: true });
+  const movie = await Movie.findById(movieid);
+  if (!movie) return sendError(res, "Movie not found");
+
+  const updateData = { ...req.body };
+
+  if (req.file) {
+    const localPath = req.file.path;
+    const remotePath = `banner/${Date.now()}_${req.file.originalname}`;
+    const fileRef = bucket.file(remotePath);
+
+    await bucket.upload(localPath, {
+      destination: remotePath,
+      metadata: { contentType: req.file.mimetype },
+    });
+    await fileRef.makePublic();
+    updateData.banner = `https://storage.googleapis.com/${bucket.name}/${remotePath}`;
+    fs.unlinkSync(localPath);
+  }
+
+  const updatedMovie = await Movie.findByIdAndUpdate(movieid, updateData, { new: true });
+
+  // Xóa banner cũ sau khi update DB thành công
+  if (req.file && movie.banner) {
+    try {
+      const oldRemotePath = movie.banner.split(`${bucket.name}/`)[1];
+      if (oldRemotePath) await bucket.file(oldRemotePath).delete();
+    } catch (err) {
+      console.log("Failed to delete old banner from Firebase:", err.message);
+    }
+  }
+
   return sendSuccess(res, "Movie updated successfully", updatedMovie);
 });
 
 export const deleteMovie = asyncHandler(async (req, res) => {
   const { movieid } = req.params;
+  const movie = await Movie.findById(movieid);
+  if (!movie) return sendError(res, "Movie not found");
+
+  if (movie.banner) {
+    try {
+      // Extract remote path from URL: https://storage.googleapis.com/<bucket>/<remotePath>
+      const remotePath = movie.banner.split(`${bucket.name}/`)[1];
+      if (remotePath) await bucket.file(remotePath).delete();
+    } catch (err) {
+      console.log("Failed to delete banner from Firebase:", err.message);
+    }
+  }
+
   await Movie.findByIdAndDelete(movieid);
   return sendSuccess(res, "Movie deleted successfully");
 });
