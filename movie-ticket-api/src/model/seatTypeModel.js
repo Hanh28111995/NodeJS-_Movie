@@ -5,7 +5,7 @@ const seatTypeSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true, // tên loại ghế
-      enum: ["regular", "VIP", "double"],
+      enum: ["Standard", "VIP", "Double"],
     },
     price: {
       type: Number,
