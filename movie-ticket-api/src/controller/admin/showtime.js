@@ -12,6 +12,7 @@ export const createShowtime = asyncHandler(async (req, res) => {
 
   const theater = await Theater.findById(theaterId).lean();
   if (!theater) return sendError(res, "Theater not found", 404);
+  if (!theater.cinema) return sendError(res, "Theater has no cinema assigned", 400);
 
   // Generate seats từ theater, reset isBooked về false
   const seats = theater.seats.map(({ seatNumber, seatType }) => ({
