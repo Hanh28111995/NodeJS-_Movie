@@ -7,12 +7,13 @@ import {
 import express from "express";
 import { validateBody } from "../../middleware/validation.js";
 import { submitNewMovie } from "../../validation/index.js";
+import { handleUploadBanner } from "../../middleware/upload.js";
 
 const adminMoviesRouter = express.Router();
 
 adminMoviesRouter.get("/allMovies", getAllMovies);
 
-adminMoviesRouter.post("/add", validateBody(submitNewMovie), addMovie);
+adminMoviesRouter.post("/add", handleUploadBanner, validateBody(submitNewMovie), addMovie);
 
 adminMoviesRouter.put("/update/:movieid", validateBody(submitNewMovie), updateMovie);
 

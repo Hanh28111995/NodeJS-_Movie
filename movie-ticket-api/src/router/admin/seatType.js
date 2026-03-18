@@ -23,13 +23,13 @@ adminSeatTypeRouter.post("/add", addSeatType);
  * @description edit movie by id
  * @access private (admin only)
  */
-adminSeatTypeRouter.put("update/:id", updateSeatType);
+adminSeatTypeRouter.put("/update/:id", updateSeatType);
 
 /**
- * @route DELETE /api/movies/:id
- * @description delete movie by id
+ * @route DELETE /api/admin/seatType/delete/:id
+ * @description delete seatType by id
  * @access private (admin only)
  */
-adminSeatTypeRouter.delete("delete/:id", deleteSeatType );
+adminSeatTypeRouter.delete("/delete/:id", deleteSeatType);
 
 export default adminSeatTypeRouter;

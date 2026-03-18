@@ -1,6 +1,8 @@
-import { sendSuccess } from "../../helper/client.js";
+import { sendSuccess, sendError, sendServerError } from "../../helper/client.js";
 import Movie from "../../model/movieModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
+import { bucket } from "../../middleware/firebase.js";
+import fs from "fs";
 
 export const getAllMovies = asyncHandler(async (req, res) => {
   const movies = await Movie.find().sort({ title: 1 }).lean();
@@ -8,7 +10,21 @@ export const getAllMovies = asyncHandler(async (req, res) => {
 });
 
 export const addMovie = asyncHandler(async (req, res) => {
-  const newMovie = await Movie.create(req.body);
+  if (!req.file) return sendError(res, "Banner image is required");
+
+  const localPath = req.file.path;
+  const remotePath = `banner/${Date.now()}_${req.file.originalname}`;
+  const fileRef = bucket.file(remotePath);
+
+  await bucket.upload(localPath, {
+    destination: remotePath,
+    metadata: { contentType: req.file.mimetype },
+  });
+  await fileRef.makePublic();
+  const bannerUrl = `https://storage.googleapis.com/${bucket.name}/${remotePath}`;
+  fs.unlinkSync(localPath);
+
+  const newMovie = await Movie.create({ ...req.body, banner: bannerUrl });
   return sendSuccess(res, "Movie added successfully", newMovie);
 });
 
