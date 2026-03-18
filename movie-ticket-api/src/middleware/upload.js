@@ -6,10 +6,11 @@ import path from "path";
 const createStorage = (folder) =>
   multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, `src/upload/${folder}/`);
+      const dir = process.env.NODE_ENV === "production" ? `/tmp` : `src/upload/${folder}`;
+      cb(null, dir);
     },
     filename: (req, file, cb) => {
-      cb(null, file.originalname); // giữ nguyên tên gốc
+      cb(null, file.originalname);
     },
   });
 
