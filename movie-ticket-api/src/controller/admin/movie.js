@@ -30,7 +30,7 @@ export const addMovie = asyncHandler(async (req, res) => {
 
 export const updateMovie = asyncHandler(async (req, res) => {
   const { movieid } = req.params;
-  const movie = await Movie.findById(movieid);
+  const movie = await Movie.findOne({ id_movie: movieid });
   if (!movie) return sendError(res, "Movie not found");
 
   const updateData = { ...req.body };
@@ -49,9 +49,8 @@ export const updateMovie = asyncHandler(async (req, res) => {
     fs.unlinkSync(localPath);
   }
 
-  const updatedMovie = await Movie.findByIdAndUpdate(movieid, updateData, { new: true });
+  const updatedMovie = await Movie.findOneAndUpdate({ id_movie: movieid }, updateData, { new: true });
 
-  // Xóa banner cũ sau khi update DB thành công
   if (req.file && movie.banner) {
     try {
       const oldRemotePath = movie.banner.split(`${bucket.name}/`)[1];
@@ -66,12 +65,11 @@ export const updateMovie = asyncHandler(async (req, res) => {
 
 export const deleteMovie = asyncHandler(async (req, res) => {
   const { movieid } = req.params;
-  const movie = await Movie.findById(movieid);
+  const movie = await Movie.findOne({ id_movie: movieid });
   if (!movie) return sendError(res, "Movie not found");
 
   if (movie.banner) {
     try {
-      // Extract remote path from URL: https://storage.googleapis.com/<bucket>/<remotePath>
       const remotePath = movie.banner.split(`${bucket.name}/`)[1];
       if (remotePath) await bucket.file(remotePath).delete();
     } catch (err) {
@@ -79,6 +77,6 @@ export const deleteMovie = asyncHandler(async (req, res) => {
     }
   }
 
-  await Movie.findByIdAndDelete(movieid);
+  await Movie.findOneAndDelete({ id_movie: movieid });
   return sendSuccess(res, "Movie deleted successfully");
 });
