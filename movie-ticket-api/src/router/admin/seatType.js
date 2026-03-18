@@ -9,7 +9,7 @@ const adminSeatTypeRouter = express.Router();
  * @access private (admin only)
  */
 
-adminSeatTypeRouter.get("/allSeatType", getSeatType);
+adminSeatTypeRouter.get("/allSeatTypes", getSeatType);
 
 /**
  * @route POST /api/admin/movie/add
