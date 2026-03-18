@@ -1,5 +1,6 @@
 import SeatType from "../../model/seatTypeModel.js";
 import { submitSeatType } from "../../validation/index.js";
+import { sendSuccess, sendError, sendServerError } from "../../helper/client.js";
 
 export const getSeatType = async (req, res) => {
     try {
