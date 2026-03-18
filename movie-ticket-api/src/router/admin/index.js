@@ -17,7 +17,7 @@ adminRouter.use("/movie", adminMoviesRouter);
 adminRouter.use("/ticket", adminTicketRouter);
 adminRouter.use("/user", adminUserRouter);
 adminRouter.use("/showtime", adminShowTimeRouter);
-adminRouter.use("/cinema", adminCinemaRouter);
+adminRouter.use("/branch", adminCinemaRouter);
 adminRouter.use("/theater", adminTheaterRouter);
 adminRouter.use("/seatType", adminSeatTypeRouter);
 

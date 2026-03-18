@@ -70,6 +70,6 @@ export const submitNewUser = (data) => {
     .isRequired(data.username, "username")
     .isRequired(data.password, "password")
     .isRequired(data.email, "email")
-    .isRequired(data.username, "role");
+    .isRequired(data.role, "role");
   return error.get();
 };
