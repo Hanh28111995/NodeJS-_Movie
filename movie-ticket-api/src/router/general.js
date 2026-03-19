@@ -155,15 +155,10 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   }
 
   if (branch) {
-    const cinemaDoc = await Cinema.findOne({
-      $or: [{ cinemaName: branch }, { branch: branch }],
-    }).select("_id").lean();
-    console.log("[filter] branch:", branch, "→ cinemaDoc:", cinemaDoc);
-    if (!cinemaDoc) {
-      return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
-    }
-    const theaterIds = await Theater.find({ cinema: cinemaDoc._id }).distinct("_id");
-    console.log("[filter] theaterIds:", theaterIds);
+    // Theater lưu cinemaName và branch dạng string → filter trực tiếp qua theater
+    const theaterIds = await Theater.find({
+      $or: [{ branch: branch }, { cinemaName: branch }]
+    }).distinct("_id");
     if (theaterIds.length === 0) {
       return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
     }
@@ -178,7 +173,6 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   }
 
   const query = conditions.length > 0 ? { $and: conditions } : {};
-  console.log("[filter] final query:", JSON.stringify(query));
 
   const showtimes = await Showtime.find(query)
     .populate("cinema")
