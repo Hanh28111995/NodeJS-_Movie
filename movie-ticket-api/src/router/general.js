@@ -151,7 +151,7 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   let query = {};
 
   if (idMovie) {
-    query.movie = idMovie;
+    query.id_movie = idMovie;
   }
 
   if (branch) {
@@ -175,16 +175,21 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   }
 
   const showtimes = await Showtime.find(query)
-    .populate("id_movie")
     .populate("cinema")
     .populate("theater")
     .lean();
 
-  return sendSuccess(
-    res,
-    "Filtered showtimes retrieved successfully",
-    showtimes
-  );
+  // Lookup movie title thủ công
+  const movieIds = [...new Set(showtimes.map(st => st.id_movie?.toString()).filter(Boolean))];
+  const movies = await Movie.find({ _id: { $in: movieIds } }).lean();
+  const movieMap = Object.fromEntries(movies.map(m => [m._id.toString(), m]));
+
+  const result = showtimes.map(st => ({
+    ...st,
+    id_movie: movieMap[st.id_movie?.toString()] || st.id_movie,
+  }));
+
+  return sendSuccess(res, "Filtered showtimes retrieved successfully", result);
 }));
 
 export default generalRouter;
