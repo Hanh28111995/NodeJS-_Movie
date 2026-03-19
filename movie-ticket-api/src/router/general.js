@@ -157,15 +157,12 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   if (branch) {
     const cinemaDoc = await Cinema.findOne({
       $or: [{ cinemaName: branch }, { branch: branch }],
-    })
-      .select("_id")
-      .lean();
+    }).select("_id").lean();
     if (!cinemaDoc) {
       return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
     }
-    // Luôn filter qua theater vì showtime cũ có thể không có cinema field
-    const theaters = await Theater.find({ cinema: cinemaDoc._id }).select("_id").lean();
-    const theaterIds = theaters.map(t => t._id);
+    // Theater có cinema ref → lấy theaterIds rồi filter showtime theo theater
+    const theaterIds = await Theater.find({ cinema: cinemaDoc._id }).distinct("_id");
     if (theaterIds.length === 0) {
       return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
     }
