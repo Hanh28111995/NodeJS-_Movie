@@ -175,18 +175,13 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   const query = conditions.length > 0 ? { $and: conditions } : {};
 
   const showtimes = await Showtime.find(query)
-    .populate("cinema")
-    .populate("theater")
+    .select("_id startTime theater")
     .lean();
 
-  // Lookup movie title thủ công
-  const movieIds = [...new Set(showtimes.map(st => st.id_movie?.toString()).filter(Boolean))];
-  const movies = await Movie.find({ _id: { $in: movieIds } }).lean();
-  const movieMap = Object.fromEntries(movies.map(m => [m._id.toString(), m]));
-
   const result = showtimes.map(st => ({
-    ...st,
-    id_movie: movieMap[st.id_movie?.toString()] || st.id_movie,
+    _id: st._id,
+    startTime: st.startTime,
+    theater: st.theater,
   }));
 
   return sendSuccess(res, "Filtered showtimes retrieved successfully", result);
