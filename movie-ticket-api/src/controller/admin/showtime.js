@@ -3,6 +3,7 @@ import Showtime from "../../model/showtimeModel.js";
 import Movie from "../../model/movieModel.js";
 import Theater from "../../model/theaterModel.js";
 import Cinema from "../../model/cinemaModel.js";
+import SeatType from "../../model/seatTypeModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import * as cronService from "../../service/cronService.js";
 
@@ -30,16 +31,20 @@ export const createShowtime = asyncHandler(async (req, res) => {
       400,
     );
 
-  // 3. Clone danh sách ghế từ Theater sang Showtime
-  // Đảm bảo theater.seats có dữ liệu
+  // 3. Clone danh sách ghế từ Theater, thêm price từ seatType
   if (!theater.seats || theater.seats.length === 0) {
     return sendError(res, "Phòng chiếu chưa có cấu hình ghế mặc định", 400);
   }
 
+  const seatTypeIds = [...new Set(theater.seats.map(s => s.seatType?.toString()).filter(Boolean))];
+  const seatTypes = await SeatType.find({ _id: { $in: seatTypeIds } }).lean();
+  const seatTypeMap = Object.fromEntries(seatTypes.map(st => [st._id.toString(), st.price]));
+
   const seats = theater.seats.map((s) => ({
     seatNumber: s.seatNumber,
     seatType: s.seatType,
-    isBooked: false, // Tất cả ghế mới đều chưa đặt
+    price: seatTypeMap[s.seatType?.toString()] ?? 0,
+    isBooked: false,
   }));
 
   // 4. Tạo suất chiếu

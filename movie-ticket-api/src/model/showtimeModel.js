@@ -7,6 +7,7 @@ const seatSchema = new mongoose.Schema({
     ref: "seatTypes",
     required: true,
   },
+  price: { type: Number, default: 0 },
   isBooked: { type: Boolean, default: false },
 });
 
