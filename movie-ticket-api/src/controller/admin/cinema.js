@@ -13,8 +13,8 @@ export const addCinema = asyncHandler(async (req, res) => {
 });
 
 export const updateCinema = asyncHandler(async (req, res) => {
-  const { cinemaId } = req.body;
-  const updatedCinema = await Cinema.findByIdAndUpdate(cinemaId, req.body, {
+  const { _id } = req.body;
+  const updatedCinema = await Cinema.findByIdAndUpdate(_id, req.body, {
     new: true,
   });
   return sendSuccess(res, "Cập nhật rạp phim thành công", updatedCinema);
