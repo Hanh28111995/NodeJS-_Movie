@@ -148,10 +148,10 @@ generalRouter.get("/theaters/:id", asyncHandler(async (req, res) => {
 generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   const { branch, date, idMovie } = req.query;
 
-  let query = {};
+  let conditions = [];
 
   if (idMovie) {
-    query.id_movie = idMovie;
+    conditions.push({ id_movie: idMovie });
   }
 
   if (branch) {
@@ -160,19 +160,26 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
     })
       .select("_id")
       .lean();
-    if (cinemaDoc) {
-      query.cinema = cinemaDoc._id;
-    } else {
+    if (!cinemaDoc) {
       return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
     }
+    // Luôn filter qua theater vì showtime cũ có thể không có cinema field
+    const theaters = await Theater.find({ cinema: cinemaDoc._id }).select("_id").lean();
+    const theaterIds = theaters.map(t => t._id);
+    if (theaterIds.length === 0) {
+      return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
+    }
+    conditions.push({ theater: { $in: theaterIds } });
   }
 
   if (date) {
     const d1 = new Date(date);
     const d2 = new Date(date);
     d2.setDate(d2.getDate() + 1);
-    query.startTime = { $gte: d1, $lt: d2 };
+    conditions.push({ startTime: { $gte: d1, $lt: d2 } });
   }
+
+  const query = conditions.length > 0 ? { $and: conditions } : {};
 
   const showtimes = await Showtime.find(query)
     .populate("cinema")
