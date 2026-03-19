@@ -17,7 +17,7 @@ adminShowTimeRouter.get("/showtimeDetail/:id", getShowtimeById);
 
 adminShowTimeRouter.post("/add", validateBody(submitShowtime), createShowtime);
 
-adminShowTimeRouter.put("/update/:id", validateBody(submitShowtime), updateShowtime);
+adminShowTimeRouter.put("/update", validateBody(submitShowtime), updateShowtime);
 
 adminShowTimeRouter.delete("/delete/:id", deleteShowtime);
 

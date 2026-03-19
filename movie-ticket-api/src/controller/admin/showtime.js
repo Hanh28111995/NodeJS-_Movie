@@ -14,17 +14,24 @@ export const createShowtime = asyncHandler(async (req, res) => {
   if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
 
   // Tìm cinema theo cinemaName trong theater
-  const cinema = await Cinema.findOne({ cinemaName: theater.cinemaName }).lean();
-  if (!cinema) return sendError(res, "Không tìm thấy cụm rạp có phòng chiếu này", 400);
+  const cinema = await Cinema.findOne({
+    cinemaName: theater.cinemaName,
+  }).lean();
+  if (!cinema)
+    return sendError(res, "Không tìm thấy cụm rạp có phòng chiếu này", 400);
   const cinemaId = cinema._id;
-
 
   // 2. Kiểm tra trùng lịch (Logic cơ bản: cùng phòng, cùng giờ)
   const isExisted = await Showtime.findOne({
     theater: theaterId,
-    startTime: startTime
+    startTime: startTime,
   });
-  if (isExisted) return sendError(res, "Khung giờ này tại phòng chiếu đã có suất chiếu khác", 400);
+  if (isExisted)
+    return sendError(
+      res,
+      "Khung giờ này tại phòng chiếu đã có suất chiếu khác",
+      400,
+    );
 
   // 3. Clone danh sách ghế từ Theater sang Showtime
   // Đảm bảo theater.seats có dữ liệu
@@ -57,11 +64,15 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
     .populate("theater")
     .lean();
 
-  const movieIds = [...new Set(showtimes.map(st => st.id_movie?.toString()).filter(Boolean))];
-  const movies = await Movie.find({ _id: { $in: movieIds } }).select("_id title").lean();
-  const movieMap = Object.fromEntries(movies.map(m => [m._id.toString(), m]));
+  const movieIds = [
+    ...new Set(showtimes.map((st) => st.id_movie?.toString()).filter(Boolean)),
+  ];
+  const movies = await Movie.find({ _id: { $in: movieIds } })
+    .select("_id title")
+    .lean();
+  const movieMap = Object.fromEntries(movies.map((m) => [m._id.toString(), m]));
 
-  const result = showtimes.map(st => ({
+  const result = showtimes.map((st) => ({
     ...st,
     id_movie: movieMap[st.id_movie?.toString()] || st.id_movie,
   }));
@@ -76,9 +87,12 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
     .populate("theater")
     .lean();
 
-  if (!showtime) return sendSuccess(res, "Showtime retrieved successfully", showtime);
+  if (!showtime)
+    return sendSuccess(res, "Showtime retrieved successfully", showtime);
 
-  const movie = await Movie.findById(showtime.id_movie).select("_id title").lean();
+  const movie = await Movie.findById(showtime.id_movie)
+    .select("_id title")
+    .lean();
 
   await cronService.cleanupExpiredTicketsByShowtime(
     showtime.id_movie?.toString(),
@@ -99,7 +113,8 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
 
 // UPDATE
 export const updateShowtime = asyncHandler(async (req, res) => {
-  const showtime = await Showtime.findByIdAndUpdate(req.params.id, req.body, {
+  const { id } = req.body;
+  const showtime = await Showtime.findByIdAndUpdate(id, req.body, {
     new: true,
   });
   return sendSuccess(res, "Showtime updated successfully", showtime);
