@@ -5,6 +5,8 @@ import {
   getAllShowtimes,
   getShowtimeById,
   updateShowtime,
+  getUpcomingShowtimes,
+  getShowtimesToday,
 } from "../../controller/admin/showtime.js";
 import { validateBody } from "../../middleware/validation.js";
 import { submitShowtime } from "../../validation/index.js";
@@ -12,6 +14,8 @@ import { submitShowtime } from "../../validation/index.js";
 const adminShowTimeRouter = express.Router();
 
 adminShowTimeRouter.get("/all", getAllShowtimes);
+adminShowTimeRouter.get("/upcoming", getUpcomingShowtimes);
+adminShowTimeRouter.get("/today", getShowtimesToday);
 
 adminShowTimeRouter.get("/showtimeDetail/:id", getShowtimeById);
 
