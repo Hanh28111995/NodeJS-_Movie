@@ -13,12 +13,10 @@ export const createShowtime = asyncHandler(async (req, res) => {
   const theater = await Theater.findById(theaterId).lean();
   if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
 
-  // Lấy cinema từ theater.cinema (ObjectId ref)
-  const cinemaId = theater.cinema;
-  if (!cinemaId) return sendError(res, "Phòng chiếu này chưa được gán vào cụm rạp", 400);
-
-  const cinema = await Cinema.findById(cinemaId).lean();
-  if (!cinema) return sendError(res, "Không tìm thấy cụm rạp", 404);
+  // Tìm cinema theo cinemaName trong theater
+  const cinema = await Cinema.findOne({ cinemaName: theater.cinemaName }).lean();
+  if (!cinema) return sendError(res, "Không tìm thấy cụm rạp có phòng chiếu này", 400);
+  const cinemaId = cinema._id;
 
   // 2. Kiểm tra trùng lịch (Logic cơ bản: cùng phòng, cùng giờ)
   const isExisted = await Showtime.findOne({
