@@ -87,6 +87,10 @@ export const bookForCustomer = asyncHandler(async (req, res) => {
   const user = await User.findById(user_id).lean();
   if (!user) return sendError(res, "Không tìm thấy khách hàng", 404);
 
-  const newTicket = await ticketService.createTicket({ ...ticketData, user_id });
-  return sendSuccess(res, "Đặt vé cho khách hàng thành công", newTicket);
+  try {
+    const newTicket = await ticketService.createTicket({ ...ticketData, user_id });
+    return sendSuccess(res, "Đặt vé cho khách hàng thành công", newTicket);
+  } catch (err) {
+    return sendError(res, err.message, 409);
+  }
 });

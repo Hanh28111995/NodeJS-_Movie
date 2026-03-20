@@ -1,4 +1,4 @@
-import { sendSuccess } from "../../helper/client.js";
+import { sendSuccess, sendError } from "../../helper/client.js";
 import * as ticketService from "../../service/ticketService.js";
 import asyncHandler from "../../util/asyncHandler.js";
 
@@ -11,8 +11,12 @@ export const getMytickets = asyncHandler(async (req, res) => {
 export const bookMytickets = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const ticketData = { ...req.body, user_id: userId };
-  const newTicket = await ticketService.createTicket(ticketData);
-  return sendSuccess(res, "Ticket booked successfully", newTicket);
+  try {
+    const newTicket = await ticketService.createTicket(ticketData);
+    return sendSuccess(res, "Ticket booked successfully", newTicket);
+  } catch (err) {
+    return sendError(res, err.message, 409);
+  }
 });
 
 export const confirmMytickets = asyncHandler(async (req, res) => {

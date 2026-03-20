@@ -1,4 +1,5 @@
 import InforTicket from "../model/inforTicketModel.js";
+import Showtime from "../model/showtimeModel.js";
 
 export const getAllTickets = async () => {
   return await InforTicket.find().lean();
@@ -9,17 +10,29 @@ export const getTicketById = async (id) => {
 };
 
 export const createTicket = async (ticketData) => {
-  // Generate transactionId nếu FE không gửi
   if (!ticketData.transactionId) {
     ticketData.transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   }
-  // Convert startTime từ "DD/MM/YYYY HH:mm" sang Date nếu cần
-  if (ticketData.startTime && typeof ticketData.startTime === "string") {
-    const parts = ticketData.startTime.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
-    if (parts) {
-      ticketData.startTime = new Date(`${parts[3]}-${parts[2]}-${parts[1]}T${parts[4]}:${parts[5]}:00.000Z`);
+
+  // Kiểm tra và lock ghế trước khi tạo vé (tránh race condition)
+  if (ticketData.showtime_id && ticketData.seatName?.length > 0) {
+    const seatNumbers = ticketData.seatName.map(s => s.seatNumber || s);
+
+    // Atomic check: chỉ update nếu TẤT CẢ ghế đều chưa booked
+    const result = await Showtime.updateOne(
+      {
+        _id: ticketData.showtime_id,
+        "seats": { $not: { $elemMatch: { seatNumber: { $in: seatNumbers }, isBooked: true } } }
+      },
+      { $set: { "seats.$[seat].isBooked": true } },
+      { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
+    );
+
+    if (result.matchedCount === 0) {
+      throw new Error("Một hoặc nhiều ghế đã được đặt bởi người khác");
     }
   }
+
   return await InforTicket.create(ticketData);
 };
 
@@ -42,7 +55,19 @@ export const confirmTicketPayment = async (ticketId) => {
 export const cancelTicket = async (ticketId) => {
   const ticket = await InforTicket.findById(ticketId);
   if (!ticket) throw new Error("Ticket not found");
-  
+
   ticket.paymentStatus = "Failed";
-  return await ticket.save();
+  await ticket.save();
+
+  // Release ghế về isBooked = false
+  if (ticket.showtime_id && ticket.seatName?.length > 0) {
+    const seatNumbers = ticket.seatName.map(s => s.seatNumber || s);
+    await Showtime.updateOne(
+      { _id: ticket.showtime_id },
+      { $set: { "seats.$[seat].isBooked": false } },
+      { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
+    );
+  }
+
+  return ticket;
 };
