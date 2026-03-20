@@ -13,6 +13,13 @@ export const createTicket = async (ticketData) => {
   if (!ticketData.transactionId) {
     ticketData.transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   }
+  // Convert startTime từ "DD/MM/YYYY HH:mm" sang Date nếu cần
+  if (ticketData.startTime && typeof ticketData.startTime === "string") {
+    const parts = ticketData.startTime.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+    if (parts) {
+      ticketData.startTime = new Date(`${parts[3]}-${parts[2]}-${parts[1]}T${parts[4]}:${parts[5]}:00.000Z`);
+    }
+  }
   return await InforTicket.create(ticketData);
 };
 

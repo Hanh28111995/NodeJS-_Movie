@@ -12,9 +12,9 @@ const inforTicketSchema = new mongoose.Schema({
         required: true
     },    
     startTime: {
-          type: mongoose.Schema.Types.Date,
-          required: true,
-        },
+      type: mongoose.Schema.Types.String,
+      required: true,
+    },
     id_theater: {
         type: mongoose.Schema.Types.String,
         ref: 'theater',

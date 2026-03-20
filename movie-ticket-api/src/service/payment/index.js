@@ -3,7 +3,14 @@ import * as ticketRepository from "../../service/ticketService.js";
 export const PaymentService = {
   cash: {
     createPaymentUrl: async (res, ticketData) => {
-      const ticket = await ticketRepository.confirmTicketPayment(ticketData.id);
+      const ticketId = ticketData.id || ticketData._id;
+      if (!ticketId) {
+        return res.status(400).json({ success: false, message: "Thiếu ticket id" });
+      }
+      const ticket = await ticketRepository.confirmTicketPayment(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ success: false, message: "Không tìm thấy vé" });
+      }
       return res.status(200).json({ success: true, message: "Thanh toán tiền mặt thành công", data: ticket });
     }
   },
