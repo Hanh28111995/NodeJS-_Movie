@@ -26,7 +26,7 @@ const inforTicketSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['Credit Card', 'Debit Card', 'PayPal', 'Cash'],
+        enum: ['momo', 'internet banking', 'cash'],
         required: true
     },
     paymentStatus: {
