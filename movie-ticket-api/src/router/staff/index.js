@@ -1,9 +1,10 @@
 import express from "express";
-import { searchTicketByStaff, getAllTicketsByStaff } from "../../controller/staff/ticket.js";
+import staffTicketRouter from "./ticket.js";
+import staffUserRouter from "./user.js";
 
 const staffRouter = express.Router();
 
-staffRouter.get("/ticket/search", searchTicketByStaff);
-staffRouter.get("/ticket/all", getAllTicketsByStaff);
+staffRouter.use("/ticket", staffTicketRouter);
+staffRouter.use("/user", staffUserRouter);
 
 export default staffRouter;

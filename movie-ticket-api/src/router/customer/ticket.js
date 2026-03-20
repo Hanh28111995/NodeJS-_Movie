@@ -5,9 +5,9 @@ import { submitNewTicket } from "../../validation/index.js";
 
 const customerTicketRouter = express.Router();
 
-customerTicketRouter.get("/my-tickets", getMytickets);
-customerTicketRouter.post("/book-tickets", validateBody(submitNewTicket), bookMytickets);
-customerTicketRouter.put("/confirm-tickets", confirmMytickets);
-customerTicketRouter.put("/cancel-tickets", cancelMytickets);
+customerTicketRouter.get("/all", getMytickets);
+customerTicketRouter.post("/booking", validateBody(submitNewTicket), bookMytickets);
+customerTicketRouter.put("/confirm", confirmMytickets);
+customerTicketRouter.put("/cancel", cancelMytickets);
 
 export default customerTicketRouter;
