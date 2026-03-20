@@ -9,6 +9,10 @@ export const getTicketById = async (id) => {
 };
 
 export const createTicket = async (ticketData) => {
+  // Generate transactionId nếu FE không gửi
+  if (!ticketData.transactionId) {
+    ticketData.transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  }
   return await InforTicket.create(ticketData);
 };
 

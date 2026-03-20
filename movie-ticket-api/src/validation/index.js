@@ -55,14 +55,11 @@ export const submitNewMovie = (data) => {
 export const submitNewTicket = (data) => {
   const error = new Error();
   error
-    .isRequired(data.user_id, "user_id")  
     .isRequired(data.id_movie, "id_movie")
     .isRequired(data.id_theater, "id_theater")
     .isRequired(data.startTime, "startTime")
     .isRequired(data.seatName, "seatName")
-    .isRequired(data.paymentMethod, "paymentMethod")    
-    .isRequired(data.paymentStatus, "paymentStatus")  
-      
+    .isRequired(data.paymentMethod, "paymentMethod");
   return error.get();
 };
 
