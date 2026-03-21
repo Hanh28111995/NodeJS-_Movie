@@ -97,7 +97,7 @@ export const PaymentService = {
           vnp_OrderType: "other",
           vnp_Amount: amount * 100,
           vnp_ReturnUrl: "https://node-js-movie.vercel.app/api/payment/return_vnpay",
-          vnp_IpAddr: req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "127.0.0.1",
+          vnp_IpAddr: "192.168.1.1",
           vnp_CreateDate: createDate,
         });
 
