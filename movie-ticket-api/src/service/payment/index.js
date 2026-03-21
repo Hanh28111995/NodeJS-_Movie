@@ -4,6 +4,8 @@ import crypto from "crypto";
 import https from "https";
 import querystring from "qs";
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
 // ==================== VNPAY ====================
 const vnpayConfig = {
   tmnCode: process.env.VNP_TMNCODE,
@@ -25,14 +27,15 @@ const momoConfig = {
   accessKey: process.env.MOMO_ACCESS_KEY,
   secretKey: process.env.MOMO_SECRET_KEY,
   endpoint: process.env.MOMO_ENDPOINT,
-  notifyUrl: process.env.MOMO_NOTIFY_URL,
+  // ipnUrl: server-to-server callback, dùng chung endpoint với return để đảm bảo DB luôn được update
+  ipnUrl: process.env.MOMO_IPN_URL || "https://node-js-movie.vercel.app/api/payment/return_momo",
   returnUrl: process.env.MOMO_RETURN_URL,
 };
 
 export const PaymentService = {
   // ==================== CASH ====================
   cash: {
-    createPaymentUrl: async (res, ticketData) => {
+    confirm: async (res, ticketData) => {
       const ticketId = ticketData.id || ticketData._id;
       if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
       const ticket = await ticketRepository.confirmTicketPayment(ticketId);
@@ -43,12 +46,16 @@ export const PaymentService = {
 
   // ==================== VNPAY ====================
   vnpay: {
+    // Tạo URL thanh toán, nhúng ticketId vào orderId để dùng lúc callback
     createPaymentUrl: async (res, req, ticketData) => {
       try {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
+        if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
+
         const amount = ticketData.totalPrice || 100000;
         const createDate = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-        const orderId = `${Date.now()}`;
+        // orderId nhúng ticketId để parse lại khi callback
+        const orderId = `${ticketId}-${Date.now()}`;
 
         let vnpParams = sortObject({
           vnp_Version: "2.1.0",
@@ -60,7 +67,7 @@ export const PaymentService = {
           vnp_OrderInfo: `Thanh toan ve xem phim ${ticketId}`,
           vnp_OrderType: "other",
           vnp_Amount: amount * 100,
-          vnp_ReturnUrl: vnpayConfig.returnUrl,
+          vnp_ReturnUrl: "https://node-js-movie.vercel.app/api/payment/return_vnpay",
           vnp_IpAddr: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
           vnp_CreateDate: createDate,
         });
@@ -78,7 +85,8 @@ export const PaymentService = {
       }
     },
 
-    verifyResponse: async (res, query) => {
+    // VNPay redirect về đây sau khi thanh toán
+    verifyReturn: async (res, query) => {
       try {
         const secureHash = query["vnp_SecureHash"];
         const params = { ...query };
@@ -91,35 +99,52 @@ export const PaymentService = {
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
 
-        if (checkHash !== secureHash) return sendError(res, "Chữ ký không hợp lệ", 400);
-        if (query["vnp_ResponseCode"] === "00") return sendSuccess(res, "Thanh toán VNPay thành công");
-        return sendError(res, "Thanh toán VNPay thất bại", 400);
+        if (checkHash !== secureHash) {
+          return res.redirect(`${FRONTEND_URL}/payment-result?status=failed&reason=invalid_signature`);
+        }
+
+        // Parse ticketId từ orderId (format: {ticketId}-{timestamp})
+        const orderId = query["vnp_TxnRef"] || "";
+        const ticketId = orderId.split("-")[0];
+        const responseCode = query["vnp_ResponseCode"];
+
+        if (responseCode === "00") {
+          if (ticketId) await ticketRepository.confirmTicketPayment(ticketId);
+          return res.redirect(`${FRONTEND_URL}/payment-result?status=success&method=vnpay&ticketId=${ticketId}`);
+        } else {
+          if (ticketId) await ticketRepository.cancelTicket(ticketId);
+          return res.redirect(`${FRONTEND_URL}/payment-result?status=failed&method=vnpay&code=${responseCode}`);
+        }
       } catch (err) {
-        return sendServerError(res);
+        return res.redirect(`${FRONTEND_URL}/payment-result?status=error`);
       }
     }
   },
 
   // ==================== MOMO ====================
   momo: {
+    // Tạo URL thanh toán, nhúng ticketId vào orderId
     createPaymentUrl: async (res, ticketData) => {
       try {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
+        if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
+
         const amount = (ticketData.totalPrice || 100000).toString();
-        const orderId = `MOMO-${Date.now()}`;
+        // orderId nhúng ticketId để parse lại khi callback
+        const orderId = `${ticketId}-${Date.now()}`;
         const requestId = orderId;
         const orderInfo = `Thanh toan ve xem phim ${ticketId}`;
         const extraData = "";
 
-        const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${momoConfig.notifyUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${momoConfig.partnerCode}&redirectUrl=${momoConfig.returnUrl}&requestId=${requestId}&requestType=payWithMethod`;
+        const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${momoConfig.ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${momoConfig.partnerCode}&redirectUrl=${momoConfig.returnUrl}&requestId=${requestId}&requestType=payWithMethod`;
         const signature = crypto.createHmac("sha256", momoConfig.secretKey).update(rawSignature).digest("hex");
 
         const body = JSON.stringify({
           partnerCode: momoConfig.partnerCode,
           accessKey: momoConfig.accessKey,
           requestId, amount, orderId, orderInfo,
-          redirectUrl: momoConfig.returnUrl,
-          ipnUrl: momoConfig.notifyUrl,
+          redirectUrl: "https://node-js-movie.vercel.app/api/payment/return_momo",
+          ipnUrl: momoConfig.ipnUrl,
           extraData, requestType: "payWithMethod", signature, lang: "vi",
         });
 
@@ -153,7 +178,8 @@ export const PaymentService = {
       }
     },
 
-    verifyResponse: async (res, query) => {
+    // MoMo redirect về đây sau khi thanh toán
+    verifyReturn: async (res, query) => {
       try {
         const { partnerCode, orderId, requestId, amount, orderInfo, orderType,
           transId, resultCode, message, payType, responseTime, extraData, signature } = query;
@@ -161,11 +187,22 @@ export const PaymentService = {
         const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&message=${message}&orderId=${orderId}&orderInfo=${orderInfo}&orderType=${orderType}&partnerCode=${partnerCode}&payType=${payType}&requestId=${requestId}&responseTime=${responseTime}&resultCode=${resultCode}&transId=${transId}`;
         const checkSignature = crypto.createHmac("sha256", momoConfig.secretKey).update(rawSignature).digest("hex");
 
-        if (checkSignature !== signature) return sendError(res, "Chữ ký không hợp lệ", 400);
-        if (resultCode === "0") return sendSuccess(res, "Thanh toán MoMo thành công");
-        return sendError(res, "Thanh toán MoMo thất bại", 400);
+        if (checkSignature !== signature) {
+          return res.redirect(`${FRONTEND_URL}/payment-result?status=failed&reason=invalid_signature`);
+        }
+
+        // Parse ticketId từ orderId (format: {ticketId}-{timestamp})
+        const ticketId = (orderId || "").split("-")[0];
+
+        if (resultCode === "0") {
+          if (ticketId) await ticketRepository.confirmTicketPayment(ticketId);
+          return res.redirect(`${FRONTEND_URL}/payment-result?status=success&method=momo&ticketId=${ticketId}`);
+        } else {
+          if (ticketId) await ticketRepository.cancelTicket(ticketId);
+          return res.redirect(`${FRONTEND_URL}/payment-result?status=failed&method=momo&code=${resultCode}`);
+        }
       } catch (err) {
-        return sendServerError(res);
+        return res.redirect(`${FRONTEND_URL}/payment-result?status=error`);
       }
     }
   }
