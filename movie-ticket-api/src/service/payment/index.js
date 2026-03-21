@@ -30,14 +30,16 @@ function sortObject(obj) {
 }
 
 // ==================== MOMO ====================
+const MOMO_RETURN_URL = "https://node-js-movie.vercel.app/api/payment/return_momo";
+
 const momoConfig = {
   partnerCode: process.env.MOMO_PARTNER_CODE,
   accessKey: process.env.MOMO_ACCESS_KEY,
   secretKey: process.env.MOMO_SECRET_KEY,
   endpoint: process.env.MOMO_ENDPOINT,
-  // ipnUrl: server-to-server callback, dùng chung endpoint với return để đảm bảo DB luôn được update
-  ipnUrl: process.env.MOMO_IPN_URL || "https://node-js-movie.vercel.app/api/payment/return_momo",
-  returnUrl: process.env.MOMO_RETURN_URL,
+  // cả redirectUrl và ipnUrl đều trỏ về BE để verify, BE sẽ redirect sang FE sau
+  redirectUrl: MOMO_RETURN_URL,
+  ipnUrl: MOMO_RETURN_URL,
 };
 
 export const PaymentService = {
@@ -144,14 +146,14 @@ export const PaymentService = {
         const orderInfo = `Thanh toan ve xem phim ${ticketId}`;
         const extraData = "";
 
-        const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${momoConfig.ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${momoConfig.partnerCode}&redirectUrl=${momoConfig.returnUrl}&requestId=${requestId}&requestType=payWithMethod`;
+        const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${momoConfig.ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${momoConfig.partnerCode}&redirectUrl=${momoConfig.redirectUrl}&requestId=${requestId}&requestType=payWithMethod`;
         const signature = crypto.createHmac("sha256", momoConfig.secretKey).update(rawSignature).digest("hex");
 
         const body = JSON.stringify({
           partnerCode: momoConfig.partnerCode,
           accessKey: momoConfig.accessKey,
           requestId, amount, orderId, orderInfo,
-          redirectUrl: "https://node-js-movie.vercel.app/api/payment/return_momo",
+          redirectUrl: momoConfig.redirectUrl,
           ipnUrl: momoConfig.ipnUrl,
           extraData, requestType: "payWithMethod", signature, lang: "vi",
         });
