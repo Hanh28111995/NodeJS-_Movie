@@ -18,11 +18,11 @@ paymentRouter.post("/cash", verifyToken, cashConfirmPayment);
 paymentRouter.get("/status/:id", checkTicketPaymentStatus);
 
 // VNPAY
-paymentRouter.post("/vnpay/create_vnpay", verifyToken, createVnpayPayment);
-paymentRouter.get("/vnpay/return", vnpayReturn);
+paymentRouter.post("/create_vnpay", verifyToken, createVnpayPayment);
+paymentRouter.get("/return_vnpay", vnpayReturn);
 
 // MOMO
-paymentRouter.post("/momo/create_momo", verifyToken, createMomoPayment);
-paymentRouter.get("/momo/return", momoReturn);
+paymentRouter.post("/create_momo", verifyToken, createMomoPayment);
+paymentRouter.get("/return_momo", momoReturn);
 
 export default paymentRouter;
