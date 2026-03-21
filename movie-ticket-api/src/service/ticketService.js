@@ -1,8 +1,17 @@
 import InforTicket from "../model/inforTicketModel.js";
 import Showtime from "../model/showtimeModel.js";
 
-export const getAllTickets = async () => {
-  return await InforTicket.find().lean();
+export const getAllTickets = async ({ page = 1, limit = 10, paymentStatus } = {}) => {
+  const filter = {};
+  if (paymentStatus) filter.paymentStatus = paymentStatus;
+
+  const skip = (page - 1) * limit;
+  const [tickets, total] = await Promise.all([
+    InforTicket.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    InforTicket.countDocuments(filter),
+  ]);
+
+  return { tickets, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
 export const getTicketById = async (id) => {

@@ -1,65 +1,53 @@
 import InforTicket from "../model/inforTicketModel.js";
 import Showtime from "../model/showtimeModel.js";
 
+const EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 tiếng
+
 /**
- * @desc Xử lý dọn dẹp vé hết hạn cho một suất chiếu cụ thể (Lazy Cleanup)
- * @param {string} movieId 
- * @param {string} theaterId 
- * @param {Date} startTime 
+ * @desc Lazy cleanup — gọi khi getShowtimeById, dọn vé Pending quá hạn của 1 suất chiếu
  */
 export const cleanupExpiredTicketsByShowtime = async (movieId, theaterId, startTime) => {
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const expiredBefore = new Date(Date.now() - EXPIRY_MS);
+  const startTimeStr = startTime instanceof Date ? startTime.toISOString() : startTime;
 
-  // 1. Tìm các vé Pending của suất chiếu này đã quá 10 phút
   const expiredTickets = await InforTicket.find({
     id_movie: movieId,
     id_theater: theaterId,
-    startTime: startTime,
+    startTime: startTimeStr,
     paymentStatus: "Pending",
-    createdAt: { $lt: tenMinutesAgo },
+    createdAt: { $lt: expiredBefore },
   });
 
   if (expiredTickets.length === 0) return;
 
-  // 2. Lấy danh sách tất cả các ghế cần giải phóng
-  const seatsToRelease = expiredTickets.flatMap(ticket => ticket.seatName);
+  const seatNumbersToRelease = expiredTickets
+    .flatMap(ticket => ticket.seatName)
+    .map(s => (typeof s === "object" ? s.seatNumber : s))
+    .filter(Boolean);
 
-  // 3. Cập nhật Showtime một lần duy nhất để giải phóng tất cả ghế
-  const showtime = await Showtime.findOne({
-    movie: movieId,
-    theater: theaterId,
-    startTime: startTime,
-  });
+  await Showtime.updateOne(
+    { id_movie: movieId, theater: theaterId, startTime: startTime },
+    { $set: { "seats.$[seat].isBooked": false } },
+    { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbersToRelease } }] }
+  );
 
-  if (showtime) {
-    showtime.seats = showtime.seats.map(seat => {
-      if (seatsToRelease.includes(seat.seatNumber)) {
-        return { ...seat.toObject(), isBooked: false };
-      }
-      return seat;
-    });
-    await showtime.save();
-  }
-
-  // 4. Cập nhật trạng thái vé sang Failed
   await InforTicket.updateMany(
     { _id: { $in: expiredTickets.map(t => t._id) } },
     { $set: { paymentStatus: "Failed" } }
   );
 
-  console.log(`Lazy Cleanup: Đã giải phóng ${seatsToRelease.length} ghế cho suất chiếu.`);
+  console.log(`[Lazy Cleanup] Giải phóng ${seatNumbersToRelease.length} ghế.`);
 };
 
 /**
- * @desc Tự động quét và xử lý các vé chưa thanh toán quá hạn (Toàn bộ hệ thống)
+ * @desc Global cleanup — quét toàn bộ vé Pending quá hạn (gọi từ cron endpoint)
  */
 export const cleanupExpiredTickets = async () => {
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const expiredBefore = new Date(Date.now() - EXPIRY_MS);
 
-  // 1. Tìm các vé quá hạn
   const expiredTickets = await InforTicket.find({
     paymentStatus: "Pending",
-    createdAt: { $lt: tenMinutesAgo },
+    createdAt: { $lt: expiredBefore },
   });
 
   if (expiredTickets.length === 0) {
@@ -70,38 +58,26 @@ export const cleanupExpiredTickets = async () => {
 
   for (const ticket of expiredTickets) {
     try {
-      // 2. Tìm Showtime tương ứng
-      const showtime = await Showtime.findOne({
-        movie: ticket.id_movie,
-        theater: ticket.id_theater,
-        startTime: ticket.startTime,
-      });
+      const seatNumbers = ticket.seatName
+        .map(s => (typeof s === "object" ? s.seatNumber : s))
+        .filter(Boolean);
 
-      if (showtime) {
-        // Giải phóng ghế
-        const updatedSeats = showtime.seats.map((seat) => {
-          if (ticket.seatName.includes(seat.seatNumber)) {
-            return { ...seat.toObject(), isBooked: false };
-          }
-          return seat;
-        });
+      await Showtime.updateOne(
+        { id_movie: ticket.id_movie, theater: ticket.id_theater, startTime: ticket.startTime },
+        { $set: { "seats.$[seat].isBooked": false } },
+        { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
+      );
 
-        showtime.seats = updatedSeats;
-        await showtime.save();
-      }
-
-      // 3. Cập nhật trạng thái vé
       ticket.paymentStatus = "Failed";
       await ticket.save();
-      
       processedCount++;
     } catch (err) {
-      console.error(`Lỗi khi xử lý vé ${ticket._id}:`, err.message);
+      console.error(`[Cron] Lỗi vé ${ticket._id}:`, err.message);
     }
   }
 
-  return { 
-    message: `Đã xử lý thành công ${processedCount}/${expiredTickets.length} vé hết hạn.`,
-    count: processedCount 
+  return {
+    message: `Đã xử lý ${processedCount}/${expiredTickets.length} vé hết hạn.`,
+    count: processedCount,
   };
 };

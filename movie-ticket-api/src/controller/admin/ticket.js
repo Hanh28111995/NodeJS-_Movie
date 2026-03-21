@@ -3,8 +3,13 @@ import * as ticketService from "../../service/ticketService.js";
 import asyncHandler from "../../util/asyncHandler.js";
 
 export const getAllTickets = asyncHandler(async (req, res) => {
-  const tickets = await ticketService.getAllTickets();
-  return sendSuccess(res, "All tickets retrieved successfully", tickets);
+  const { page = 1, limit = 10, paymentStatus } = req.query;
+  const result = await ticketService.getAllTickets({
+    page: Number(page),
+    limit: Number(limit),
+    paymentStatus,
+  });
+  return sendSuccess(res, "All tickets retrieved successfully", result);
 });
 
 export const getTicketById = asyncHandler(async (req, res) => {
