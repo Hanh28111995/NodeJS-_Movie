@@ -9,40 +9,24 @@ import https from "https";
 
 // Build query string để ký — không encode (VNPay yêu cầu raw string khi hash)
 function toSignData(obj) {
-  return Object.keys(obj)
-    .map((k) => `${k}=${obj[k]}`)
+  return Object.keys(obj).sort()
+    .map(k => `${k}=${obj[k]}`)
     .join("&");
 }
 
 // Build query string cho URL — encode value
 function toQueryString(obj) {
-  return Object.keys(obj)
-    .map((k) => `${k}=${encodeURIComponent(obj[k])}`)
+  return Object.keys(obj).sort()
+    .map(k => `${k}=${encodeURIComponent(obj[k])}`)
     .join("&");
 }
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 // ==================== VNPAY ====================
-const VNP_RETURN_URL =
-  "https://node-js-movie.vercel.app/api/payment/return_vnpay";
+const VNP_RETURN_URL = "https://node-js-movie.vercel.app/api/payment/return_vnpay";
 
-function sortObject(obj) {
-  let sorted = {};
-  let str = [];
-  let key;
-  for (key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      str.push(encodeURIComponent(key));
-    }
-  }
-  str.sort();
-  for (key = 0; key < str.length; key++) {
-    // VNPAY yêu cầu encode value và thay %20 (khoảng trắng) thành dấu +
-    sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-  }
-  return sorted;
-}
+
 
 // Tính tổng tiền từ seatName array — price đã được enrich từ DB ở controller
 function calcTotalPrice(seatName = []) {
@@ -128,32 +112,23 @@ export const PaymentService = {
           vnp_TxnRef: orderId,
           vnp_OrderInfo: orderInfo,
           vnp_OrderType: "other",
-          vnp_Amount: amount * 100, // VNPAY nhân 100 số tiền thực tế
-          vnp_ReturnUrl:
-            "https://node-js-movie.vercel.app/api/payment/return_vnpay",
+          vnp_Amount: amount * 100,
+          vnp_ReturnUrl: VNP_RETURN_URL,
           vnp_IpAddr: ipAddr,
           vnp_CreateDate: createDate,
         };
 
-        // 1. Sắp xếp và Encode tham số (Quan trọng nhất)
-        vnpParams = sortObject(vnpParams);
+        // 1. Tạo signData từ params đã sort, không encode
+        const signData = toSignData(vnpParams);
 
-        // 2. Tạo chuỗi query data để Hash (không encode lần nữa vì sortObject đã làm rồi)
-        const signData = querystring.stringify(vnpParams, { encode: false });
-
-        // 3. Tạo SecureHash bằng HMAC-SHA512
-        const hmac = crypto.createHmac("sha512", hashSecret);
-        const signed = hmac
+        // 2. Hash HMAC-SHA512
+        const signed = crypto.createHmac("sha512", hashSecret)
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
 
-        // 4. Thêm Hash vào params để tạo URL cuối cùng
+        // 3. Build URL với encode
         vnpParams["vnp_SecureHash"] = signed;
-        const finalQueryString = querystring.stringify(vnpParams, {
-          encode: false,
-        });
-
-        const paymentUrl = `${vnpUrl}?${finalQueryString}`;
+        const paymentUrl = `${vnpUrl}?${toQueryString(vnpParams)}`;
 
         return sendSuccess(res, "Tạo link VNPay thành công", { paymentUrl });
       } catch (err) {
@@ -171,7 +146,7 @@ export const PaymentService = {
         delete params["vnp_SecureHash"];
         delete params["vnp_SecureHashType"];
 
-        const signData = toSignData(sortObject(params));
+        const signData = toSignData(params);
         const checkHash = crypto
           .createHmac("sha512", hashSecret)
           .update(Buffer.from(signData, "utf-8"))
