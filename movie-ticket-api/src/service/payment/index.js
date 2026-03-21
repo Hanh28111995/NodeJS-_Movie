@@ -7,14 +7,14 @@ import {
 import crypto from "crypto";
 import https from "https";
 
-// Build query string để ký — không encode (VNPay yêu cầu raw string khi hash)
+// Build query string để ký — sort key, encode value (chuẩn VNPay v2.1.0)
 function toSignData(obj) {
   return Object.keys(obj).sort()
-    .map(k => `${k}=${obj[k]}`)
+    .map(k => `${k}=${encodeURIComponent(obj[k])}`)
     .join("&");
 }
 
-// Build query string cho URL — encode value
+// Build query string cho URL — sort key, encode value
 function toQueryString(obj) {
   return Object.keys(obj).sort()
     .map(k => `${k}=${encodeURIComponent(obj[k])}`)
@@ -120,11 +120,13 @@ export const PaymentService = {
 
         // 1. Tạo signData từ params đã sort, không encode
         const signData = toSignData(vnpParams);
+        console.log("[VNPay] signData:", signData);
 
         // 2. Hash HMAC-SHA512
         const signed = crypto.createHmac("sha512", hashSecret)
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
+        console.log("[VNPay] signed:", signed);
 
         // 3. Build URL với encode
         vnpParams["vnp_SecureHash"] = signed;
