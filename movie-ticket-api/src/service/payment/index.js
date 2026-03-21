@@ -153,8 +153,8 @@ export const PaymentService = {
           partnerCode: momoConfig.partnerCode,
           accessKey: momoConfig.accessKey,
           requestId, amount, orderId, orderInfo,
-          redirectUrl: momoConfig.redirectUrl,
-          ipnUrl: momoConfig.ipnUrl,
+          redirectUrl: "https://node-js-movie.vercel.app/api/payment/return_momo",
+          ipnUrl: "https://node-js-movie.vercel.app/api/payment/return_momo",
           extraData, requestType: "payWithMethod", signature, lang: "vi",
         });
 
