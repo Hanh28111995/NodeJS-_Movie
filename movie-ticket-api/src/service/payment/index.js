@@ -7,17 +7,17 @@ import {
 import crypto from "crypto";
 import https from "https";
 
-// Build query string để ký — sort key, không encode (VNPay raw hash)
+// Build query string để ký — encode value, space thành + (chuẩn VNPay)
 function toSignData(obj) {
   return Object.keys(obj).sort()
-    .map(k => `${k}=${obj[k]}`)
+    .map(k => `${k}=${encodeURIComponent(obj[k]).replace(/%20/g, "+")}`)
     .join("&");
 }
 
-// Build query string cho URL — sort key, không encode
+// Build query string cho URL — encode value
 function toQueryString(obj) {
   return Object.keys(obj).sort()
-    .map(k => `${k}=${obj[k]}`)
+    .map(k => `${k}=${encodeURIComponent(obj[k])}`)
     .join("&");
 }
 
