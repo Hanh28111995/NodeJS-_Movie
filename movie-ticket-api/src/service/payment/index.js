@@ -77,7 +77,7 @@ export const PaymentService = {
         if (!amount) return sendError(res, "Không tính được tổng tiền vé", 400);
 
         const createDate = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-        const orderId = `${ticketId}-${Date.now()}`;
+        const orderId = `${ticketId}__${Date.now()}`;
         const orderInfo = buildOrderInfo(ticketData.seatName);
 
         // Đọc config tại runtime để đảm bảo env đã được inject
@@ -122,6 +122,7 @@ export const PaymentService = {
     // VNPay redirect về đây sau khi thanh toán
     verifyReturn: async (res, query) => {
       try {
+        const hashSecret = process.env.VNP_HASHSECRET;
         const secureHash = query["vnp_SecureHash"];
         const params = { ...query };
         delete params["vnp_SecureHash"];
@@ -129,7 +130,7 @@ export const PaymentService = {
 
         const signData = toQueryString(sortObject(params), false);
         const checkHash = crypto
-          .createHmac("sha512", vnpayConfig.hashSecret)
+          .createHmac("sha512", hashSecret)
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
 
@@ -137,9 +138,9 @@ export const PaymentService = {
           return res.redirect(`${FRONTEND_URL}/payment-result?status=failed&reason=invalid_signature`);
         }
 
-        // Parse ticketId từ orderId (format: {ticketId}-{timestamp})
+        // Parse ticketId từ orderId (format: {ticketId}__{timestamp})
         const orderId = query["vnp_TxnRef"] || "";
-        const ticketId = orderId.split("-")[0];
+        const ticketId = orderId.split("__")[0];
         const responseCode = query["vnp_ResponseCode"];
 
         if (responseCode === "00") {
@@ -163,9 +164,9 @@ export const PaymentService = {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
         if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
 
-        const amount = calcTotalPrice(ticketData.seatName);
-        if (!amount) return sendError(res, "Không tính được tổng tiền vé", 400);
-        const orderId = `${ticketId}-${Date.now()}`;
+        const amount = String(calcTotalPrice(ticketData.seatName));
+        if (!Number(amount)) return sendError(res, "Không tính được tổng tiền vé", 400);
+        const orderId = `${ticketId}__${Date.now()}`;
         const requestId = orderId;
         const orderInfo = buildOrderInfo(ticketData.seatName);
         const extraData = "";
@@ -225,8 +226,8 @@ export const PaymentService = {
           return res.redirect(`${FRONTEND_URL}/payment-result?status=failed&reason=invalid_signature`);
         }
 
-        // Parse ticketId từ orderId (format: {ticketId}-{timestamp})
-        const ticketId = (orderId || "").split("-")[0];
+        // Parse ticketId từ orderId (format: {ticketId}__{timestamp})
+        const ticketId = (orderId || "").split("__")[0];
 
         if (resultCode === "0") {
           if (ticketId) await ticketRepository.confirmTicketPayment(ticketId);
