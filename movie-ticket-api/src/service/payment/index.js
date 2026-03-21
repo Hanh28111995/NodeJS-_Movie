@@ -29,6 +29,17 @@ function sortObject(obj) {
   }, {});
 }
 
+// Tính tổng tiền từ seatName array
+function calcTotalPrice(seatName = []) {
+  return seatName.reduce((sum, seat) => sum + (Number(seat.price) || 0), 0);
+}
+
+// Tạo orderInfo từ seatName array
+function buildOrderInfo(seatName = []) {
+  const seatList = seatName.map(s => s.seatNumber).filter(Boolean).join(", ");
+  return `Thanh toan ve xem phim ${seatList}`;
+}
+
 // ==================== MOMO ====================
 const MOMO_RETURN_URL = "https://node-js-movie.vercel.app/api/payment/return_momo";
 
@@ -62,10 +73,10 @@ export const PaymentService = {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
         if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
 
-        const amount = ticketData.totalPrice || 100000;
+        const amount = calcTotalPrice(ticketData.seatName);
         const createDate = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
-        // orderId nhúng ticketId để parse lại khi callback
         const orderId = `${ticketId}-${Date.now()}`;
+        const orderInfo = buildOrderInfo(ticketData.seatName);
 
         let vnpParams = sortObject({
           vnp_Version: "2.1.0",
@@ -74,7 +85,7 @@ export const PaymentService = {
           vnp_Locale: "vn",
           vnp_CurrCode: "VND",
           vnp_TxnRef: orderId,
-          vnp_OrderInfo: `Thanh toan ve xem phim ${ticketId}`,
+          vnp_OrderInfo: orderInfo,
           vnp_OrderType: "other",
           vnp_Amount: amount * 100,
           vnp_ReturnUrl: "https://node-js-movie.vercel.app/api/payment/return_vnpay",
@@ -139,11 +150,10 @@ export const PaymentService = {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
         if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
 
-        const amount = (ticketData.totalPrice || 100000).toString();
-        // orderId nhúng ticketId để parse lại khi callback
+        const amount = calcTotalPrice(ticketData.seatName) ;
         const orderId = `${ticketId}-${Date.now()}`;
         const requestId = orderId;
-        const orderInfo = `Thanh toan ve xem phim ${ticketId}`;
+        const orderInfo = buildOrderInfo(ticketData.seatName);
         const extraData = "";
 
         const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${momoConfig.ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${momoConfig.partnerCode}&redirectUrl=${momoConfig.redirectUrl}&requestId=${requestId}&requestType=payWithMethod`;
