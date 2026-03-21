@@ -7,17 +7,17 @@ import {
 import crypto from "crypto";
 import https from "https";
 
-// Build query string để ký — sort key, encode value (chuẩn VNPay v2.1.0)
+// Build query string để ký — sort key, không encode (VNPay raw hash)
 function toSignData(obj) {
   return Object.keys(obj).sort()
-    .map(k => `${k}=${encodeURIComponent(obj[k])}`)
+    .map(k => `${k}=${obj[k]}`)
     .join("&");
 }
 
-// Build query string cho URL — sort key, encode value
+// Build query string cho URL — sort key, không encode
 function toQueryString(obj) {
   return Object.keys(obj).sort()
-    .map(k => `${k}=${encodeURIComponent(obj[k])}`)
+    .map(k => `${k}=${obj[k]}`)
     .join("&");
 }
 
@@ -102,6 +102,7 @@ export const PaymentService = {
           console.error("[VNPay] Missing env configuration");
           return sendError(res, "Cấu hình VNPay chưa đầy đủ", 500);
         }
+        console.log("[VNPay] tmnCode:", tmnCode, "| hashSecret length:", hashSecret.length, "| first4:", hashSecret.slice(0,4));
 
         let vnpParams = {
           vnp_Version: "2.1.0",
