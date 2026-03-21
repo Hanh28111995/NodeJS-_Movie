@@ -121,8 +121,29 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
     .populate("theater")
     .lean();
 
+  // Backfill price cho các ghế chưa có (showtime cũ tạo trước khi có field price)
+  const missingSeatTypeIds = [
+    ...new Set(
+      updatedShowtime.seats
+        .filter(s => !s.price && s.seatType)
+        .map(s => s.seatType.toString())
+    )
+  ];
+
+  let seatTypeMap = {};
+  if (missingSeatTypeIds.length > 0) {
+    const seatTypes = await SeatType.find({ _id: { $in: missingSeatTypeIds } }).lean();
+    seatTypeMap = Object.fromEntries(seatTypes.map(st => [st._id.toString(), st.price]));
+  }
+
+  const seats = updatedShowtime.seats.map(s => ({
+    ...s,
+    price: s.price || seatTypeMap[s.seatType?.toString()] || 0,
+  }));
+
   return sendSuccess(res, "Showtime retrieved successfully", {
     ...updatedShowtime,
+    seats,
     id_movie: movie || updatedShowtime.id_movie,
   });
 });
