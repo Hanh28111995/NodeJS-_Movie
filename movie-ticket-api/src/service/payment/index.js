@@ -16,12 +16,7 @@ function toQueryString(obj) {
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 // ==================== VNPAY ====================
-const vnpayConfig = {
-  tmnCode: process.env.VNP_TMNCODE,
-  hashSecret: process.env.VNP_HASHSECRET,
-  url: process.env.VNP_URL,
-  returnUrl: process.env.VNP_RETURNURL,
-};
+const VNP_RETURN_URL = "https://node-js-movie.vercel.app/api/payment/return_vnpay";
 
 function sortObject(obj) {
   return Object.keys(obj).sort().reduce((acc, key) => {
@@ -35,10 +30,10 @@ function calcTotalPrice(seatName = []) {
   return seatName.reduce((sum, seat) => sum + (Number(seat.price) || 0), 0);
 }
 
-// Tạo orderInfo từ seatName array
+// Tạo orderInfo từ seatName array — chỉ dùng ký tự alphanumeric để tránh lỗi chữ ký
 function buildOrderInfo(seatName = []) {
-  const seatList = seatName.map(s => s.seatNumber).filter(Boolean).join(", ");
-  return `Thanh toan ve xem phim ${seatList}`;
+  const seatList = seatName.map(s => s.seatNumber).filter(Boolean).join(" ");
+  return `Thanh toan ve ${seatList}`.replace(/[^a-zA-Z0-9 ]/g, "");
 }
 
 // ==================== MOMO ====================
