@@ -29,7 +29,7 @@ function sortObject(obj) {
   }, {});
 }
 
-// Tính tổng tiền từ seatName array
+// Tính tổng tiền từ seatName array — price đã được enrich từ DB ở controller
 function calcTotalPrice(seatName = []) {
   return seatName.reduce((sum, seat) => sum + (Number(seat.price) || 0), 0);
 }
@@ -74,14 +74,26 @@ export const PaymentService = {
         if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
 
         const amount = calcTotalPrice(ticketData.seatName);
+        if (!amount) return sendError(res, "Không tính được tổng tiền vé", 400);
+
         const createDate = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
         const orderId = `${ticketId}-${Date.now()}`;
         const orderInfo = buildOrderInfo(ticketData.seatName);
 
+        // Đọc config tại runtime để đảm bảo env đã được inject
+        const tmnCode = process.env.VNP_TMNCODE;
+        const hashSecret = process.env.VNP_HASHSECRET;
+        const vnpUrl = process.env.VNP_URL;
+
+        if (!tmnCode || !hashSecret || !vnpUrl) {
+          console.error("[VNPay] Missing env:", { tmnCode, hashSecret: !!hashSecret, vnpUrl });
+          return sendError(res, "Cấu hình VNPay chưa đầy đủ", 500);
+        }
+
         let vnpParams = sortObject({
           vnp_Version: "2.1.0",
           vnp_Command: "pay",
-          vnp_TmnCode: vnpayConfig.tmnCode,
+          vnp_TmnCode: tmnCode,
           vnp_Locale: "vn",
           vnp_CurrCode: "VND",
           vnp_TxnRef: orderId,
@@ -89,19 +101,20 @@ export const PaymentService = {
           vnp_OrderType: "other",
           vnp_Amount: amount * 100,
           vnp_ReturnUrl: "https://node-js-movie.vercel.app/api/payment/return_vnpay",
-          vnp_IpAddr: req.headers["x-forwarded-for"] || req.socket.remoteAddress,
+          vnp_IpAddr: req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "127.0.0.1",
           vnp_CreateDate: createDate,
         });
 
         const signData = toQueryString(vnpParams, false);
         vnpParams["vnp_SecureHash"] = crypto
-          .createHmac("sha512", vnpayConfig.hashSecret)
+          .createHmac("sha512", hashSecret)
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
 
-        const paymentUrl = `${vnpayConfig.url}?${toQueryString(vnpParams, false)}`;
+        const paymentUrl = `${vnpUrl}?${toQueryString(vnpParams, false)}`;
         return sendSuccess(res, "Tạo link VNPay thành công", { paymentUrl });
       } catch (err) {
+        console.error("[VNPay createPaymentUrl] ERROR:", err.message, "\nStack:", err.stack);
         return sendServerError(res);
       }
     },
@@ -150,7 +163,8 @@ export const PaymentService = {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
         if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
 
-        const amount = calcTotalPrice(ticketData.seatName) ;
+        const amount = calcTotalPrice(ticketData.seatName);
+        if (!amount) return sendError(res, "Không tính được tổng tiền vé", 400);
         const orderId = `${ticketId}-${Date.now()}`;
         const requestId = orderId;
         const orderInfo = buildOrderInfo(ticketData.seatName);
