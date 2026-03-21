@@ -2,7 +2,15 @@ import * as ticketRepository from "../../service/ticketService.js";
 import { sendSuccess, sendError, sendServerError } from "../../helper/client.js";
 import crypto from "crypto";
 import https from "https";
-import querystring from "qs";
+
+// Helper thay thế qs.stringify — sort keys và encode params cho VNPay
+function toQueryString(obj, encode = true) {
+  return Object.keys(obj)
+    .map(k => encode
+      ? `${encodeURIComponent(k)}=${encodeURIComponent(obj[k])}`
+      : `${k}=${obj[k]}`)
+    .join("&");
+}
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
@@ -72,13 +80,13 @@ export const PaymentService = {
           vnp_CreateDate: createDate,
         });
 
-        const signData = querystring.stringify(vnpParams, { encode: false });
+        const signData = toQueryString(vnpParams, false);
         vnpParams["vnp_SecureHash"] = crypto
           .createHmac("sha512", vnpayConfig.hashSecret)
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
 
-        const paymentUrl = `${vnpayConfig.url}?${querystring.stringify(vnpParams, { encode: false })}`;
+        const paymentUrl = `${vnpayConfig.url}?${toQueryString(vnpParams, false)}`;
         return sendSuccess(res, "Tạo link VNPay thành công", { paymentUrl });
       } catch (err) {
         return sendServerError(res);
@@ -93,7 +101,7 @@ export const PaymentService = {
         delete params["vnp_SecureHash"];
         delete params["vnp_SecureHashType"];
 
-        const signData = querystring.stringify(sortObject(params), { encode: false });
+        const signData = toQueryString(sortObject(params), false);
         const checkHash = crypto
           .createHmac("sha512", vnpayConfig.hashSecret)
           .update(Buffer.from(signData, "utf-8"))
