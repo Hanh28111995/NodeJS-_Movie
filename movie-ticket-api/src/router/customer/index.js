@@ -1,6 +1,7 @@
 import express from "express";
 import customerTicketRouter from "./ticket.js";
 import { getMyProfile, updateMyProfile } from "../../controller/customer/user.js";
+import customerShowTimeRouter from "./showtime.js";
 
 const customerRouter = express.Router();
 
@@ -8,7 +9,7 @@ const customerRouter = express.Router();
 customerRouter.get("/profile", getMyProfile);
 customerRouter.put("/profile-update", updateMyProfile);
 
-// Ticket Routes
+customerRouter.get("/showtime", customerShowTimeRouter);
 customerRouter.use("/myticket", customerTicketRouter);
 
 export default customerRouter;
