@@ -9,7 +9,7 @@ const customerRouter = express.Router();
 customerRouter.get("/profile", getMyProfile);
 customerRouter.put("/profile-update", updateMyProfile);
 
-customerRouter.get("/showtime", customerShowTimeRouter);
+customerRouter.use("/showtime", customerShowTimeRouter);
 customerRouter.use("/myticket", customerTicketRouter);
 
 export default customerRouter;
