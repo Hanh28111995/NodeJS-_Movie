@@ -11,11 +11,5 @@
       "src": "/(.*)",
       "dest": "index.js"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/cleanup-tickets",
-      "schedule": "0 * * * *"
-    }
   ]
 }
