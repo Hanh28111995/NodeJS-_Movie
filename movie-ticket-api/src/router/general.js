@@ -1,12 +1,11 @@
-import { sendSuccess } from "../helper/client.js";
+import { sendSuccess, sendError } from "../helper/client.js";
 import express from "express";
 import Movie from "../model/movieModel.js";
 import Cinema from "../model/cinemaModel.js";
 import Showtime from "../model/showtimeModel.js";
 import asyncHandler from "../util/asyncHandler.js";
-
 import Theater from "../model/theaterModel.js";
-import { sendError } from "../helper/client.js";
+import SeatType from "../model/seatTypeModel.js";
 
 const generalRouter = express.Router();
 
@@ -185,6 +184,11 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   }));
 
   return sendSuccess(res, "Filtered showtimes retrieved successfully", result);
+}));
+
+generalRouter.get("/seatTypes", asyncHandler(async (req, res) => {
+  const seatTypes = await SeatType.find().lean();
+  return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
 }));
 
 export default generalRouter;
