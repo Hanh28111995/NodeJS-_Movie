@@ -1,14 +1,14 @@
 import express from "express";
 import {
-  updateScheduleConfig,
-  activeStatusChange,
-  generateShowtimes,
+  getSchedulePlan,
+  editSchedulePlan,
+  createSchedulePlan,
 } from "../../controller/admin/scheduleGen.js";
 
 const scheduleGenRouter = express.Router();
 
-scheduleGenRouter.post("/activeStatusChange", activeStatusChange);
-scheduleGenRouter.post("/update", updateScheduleConfig);
-scheduleGenRouter.post("/generate", generateShowtimes);
+scheduleGenRouter.get("/get", getSchedulePlan);
+scheduleGenRouter.put("/update", editSchedulePlan);
+scheduleGenRouter.post("/create", createSchedulePlan);
 
 export default scheduleGenRouter;
