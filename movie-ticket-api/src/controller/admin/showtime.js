@@ -1,62 +1,19 @@
 import { sendSuccess, sendError } from "../../helper/client.js";
 import Showtime from "../../model/showtimeModel.js";
 import Movie from "../../model/movieModel.js";
-import Theater from "../../model/theaterModel.js";
-import Cinema from "../../model/cinemaModel.js";
-import SeatType from "../../model/seatTypeModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import * as cronService from "../../service/cronService.js";
+import { createOneShowtime } from "../../service/showtimeService.js";
 
 // CREATE
 export const createShowtime = asyncHandler(async (req, res) => {
   const { theater: theaterId, id_movie: movieId, startTime } = req.body;
-
-  const theater = await Theater.findById(theaterId).lean();
-  if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
-
-  // Tìm cinema theo cinemaName trong theater
-  const cinema = await Cinema.findOne({ cinemaName: theater.cinemaName }).lean();
-  if (!cinema) return sendError(res, "Không tìm thấy cụm rạp có phòng chiếu này", 400);
-  const cinemaId = cinema._id;
-
-  // 2. Kiểm tra trùng lịch (Logic cơ bản: cùng phòng, cùng giờ)
-  const isExisted = await Showtime.findOne({
-    theater: theaterId,
-    startTime: startTime,
-  });
-  if (isExisted)
-    return sendError(
-      res,
-      "Khung giờ này tại phòng chiếu đã có suất chiếu khác",
-      400,
-    );
-
-  // 3. Clone danh sách ghế từ Theater, thêm price từ seatType
-  if (!theater.seats || theater.seats.length === 0) {
-    return sendError(res, "Phòng chiếu chưa có cấu hình ghế mặc định", 400);
+  try {
+    const showtime = await createOneShowtime({ theaterId, movieId, startTime });
+    return sendSuccess(res, "Tạo suất chiếu mới thành công", showtime);
+  } catch (err) {
+    return sendError(res, err.message, 400);
   }
-
-  const seatTypeIds = [...new Set(theater.seats.map(s => s.seatType?.toString()).filter(Boolean))];
-  const seatTypes = await SeatType.find({ _id: { $in: seatTypeIds } }).lean();
-  const seatTypeMap = Object.fromEntries(seatTypes.map(st => [st._id.toString(), st.price]));
-
-  const seats = theater.seats.map((s) => ({
-    seatNumber: s.seatNumber,
-    seatType: s.seatType,
-    price: seatTypeMap[s.seatType?.toString()] ?? 0,
-    isBooked: false,
-  }));
-
-  // 4. Tạo suất chiếu
-  const showtime = await Showtime.create({
-    id_movie: movieId,
-    theater: theaterId,
-    cinema: cinemaId,
-    startTime,
-    seats,
-  });
-
-  return sendSuccess(res, "Tạo suất chiếu mới thành công", showtime);
 });
 
 // GET ALL

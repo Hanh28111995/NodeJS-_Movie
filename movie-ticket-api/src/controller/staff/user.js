@@ -1,24 +1,15 @@
-import User from "../../model/userModel.js";
 import { sendSuccess, sendError } from "../../helper/client.js";
 import asyncHandler from "../../util/asyncHandler.js";
+import * as userService from "../../service/userService.js";
 
 /**
- * @desc Staff tìm kiếm customer theo username, email hoặc phone
+ * @desc Staff tìm kiếm customer theo username hoặc email
  */
 export const searchCustomer = asyncHandler(async (req, res) => {
-  const { q } = req.query;
+  const { q, page = 1, limit = 10 } = req.query;
   if (!q) return sendError(res, "Vui lòng cung cấp từ khóa tìm kiếm", 400);
-
-  const users = await User.find({
-    role: "customer",
-    $or: [
-      { username: { $regex: q, $options: "i" } },
-      { email: { $regex: q, $options: "i" } },
-      { userphone: { $regex: q, $options: "i" } },
-    ],
-  }).select("-password -refreshToken").lean();
-
-  return sendSuccess(res, "Tìm kiếm khách hàng thành công", users);
+  const result = await userService.getAllUsers({ page: Number(page), limit: Number(limit), search: q });
+  return sendSuccess(res, "Tìm kiếm khách hàng thành công", result);
 });
 
 /**

@@ -8,6 +8,7 @@ import adminSeatTypeRouter from "./seatType.js";
 import adminTheaterRouter from "./theater.js";
 import adminCinemaRouter from "./cinema.js";
 import staffTicketRouter from "../staff/ticket.js";
+import scheduleGenRouter from "./schedulteGen.js";
 
 const adminRouter = express.Router();
 
@@ -19,5 +20,7 @@ adminRouter.use("/showtime", adminShowTimeRouter);
 adminRouter.use("/branch", adminCinemaRouter);
 adminRouter.use("/theater", adminTheaterRouter);
 adminRouter.use("/seatType", adminSeatTypeRouter);
+adminRouter.use("/schedule-generator", scheduleGenRouter);
+
 
 export default adminRouter;
