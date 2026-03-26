@@ -32,6 +32,21 @@ export const generate = async () => {
   const nowVN = new Date(Date.now() + VN_OFFSET);
   const todayVN = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()));
 
+  // Check xem hôm nay đã có showtime chưa (theo bất kỳ theater nào trong config)
+  const firstSlot = config.timeSlots[0];
+  const [fh, fm] = firstSlot.split(":").map(Number);
+  const todayFirstSlotUTC = new Date(todayVN.getTime() + (fh * 60 + fm) * 60000 - VN_OFFSET);
+
+  const todayExists = await Showtime.findOne({
+    theater: { $in: config.theaters },
+    startTime: todayFirstSlotUTC,
+  });
+
+  // Nếu hôm nay đã có → generate cho ngày mai
+  const targetVN = todayExists
+    ? new Date(todayVN.getTime() + 86400000)
+    : todayVN;
+
   let created = 0, updated = 0;
 
   for (const theaterId of config.theaters) {
@@ -39,7 +54,7 @@ export const generate = async () => {
       const slot = config.timeSlots[i];
       const movieId = config.movie_ids[i % config.movie_ids.length];
       const [hour, minute] = slot.split(":").map(Number);
-      const startTime = new Date(todayVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
+      const startTime = new Date(targetVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
 
       const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
       if (exists) { updated++; continue; }
@@ -63,5 +78,5 @@ export const generate = async () => {
     }
   }
 
-  return { created, updated };
+  return { created, updated, targetDate: targetVN.toISOString() };
 };

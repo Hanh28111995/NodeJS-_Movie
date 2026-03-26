@@ -15,7 +15,7 @@
   "crons": [
     {
       "path": "/api/cron/generate-showtimes",
-      "schedule": "0 0 * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }

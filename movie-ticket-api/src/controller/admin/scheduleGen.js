@@ -4,12 +4,12 @@ import * as scheduleGenService from "../../service/scheduleGenService.js";
 
 export const getSchedulePlan = asyncHandler(async (req, res) => {
   const schedule = await scheduleGenService.getConfig();
-  return sendSuccess(res, "Lấy cấu hình thành công", {schedule});
+  return sendSuccess(res, "Lấy cấu hình thành công", { schedule });
 });
 
 export const createSchedulePlan = asyncHandler(async (req, res) => {
   const { movie_ids, timeSlots, theaters, scheduleTime } = req.body;
-  if (!movie_ids?.length || !timeSlots?.length || !theaters?.length || !scheduleTime) {
+  if (!movie_ids?.length || !timeSlots?.length || !theaters?.length) {
     return sendError(res, "Thiếu thông tin cấu hình lịch chiếu", 400);
   }
   try {
@@ -22,7 +22,7 @@ export const createSchedulePlan = asyncHandler(async (req, res) => {
 
 export const editSchedulePlan = asyncHandler(async (req, res) => {
   const { movie_ids, timeSlots, theaters, scheduleTime, isActive } = req.body;
-  if (!movie_ids?.length || !timeSlots?.length || !theaters?.length || !scheduleTime) {
+  if (!movie_ids?.length || !timeSlots?.length || !theaters?.length) {
     return sendError(res, "Thiếu thông tin cấu hình lịch chiếu", 400);
   }
   try {

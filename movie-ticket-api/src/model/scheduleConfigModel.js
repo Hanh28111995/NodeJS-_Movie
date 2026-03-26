@@ -8,7 +8,7 @@ const scheduleConfigSchema = new mongoose.Schema(
     scheduleTime: {
       type: Number,
       enum: [1, 2, 3], // 1=Daily, 2=Weekly, 3=Monthly
-      required: true,
+      default: 1,
     },
     isActive: { type: Boolean, default: true },
   },
