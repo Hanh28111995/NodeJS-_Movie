@@ -9,7 +9,7 @@ adminSeatTypeRouter.get("/allSeatTypes", getSeatType);
 
 adminSeatTypeRouter.post("/add", validateBody(submitSeatType), addSeatType);
 
-adminSeatTypeRouter.put("/update/:id", validateBody(submitSeatType), updateSeatType);
+adminSeatTypeRouter.put("/update", validateBody(submitSeatType), updateSeatType);
 
 adminSeatTypeRouter.delete("/delete/:id", deleteSeatType);
 

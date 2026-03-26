@@ -16,6 +16,6 @@ adminCinemaRouter.post("/add", validateBody(submitNewCinema), addCinema);
 
 adminCinemaRouter.put("/update", validateBody(submitNewCinema), updateCinema);
 
-adminCinemaRouter.delete("/delete/:cinemaId", deleteCinema);
+adminCinemaRouter.delete("/:cinemaId/delete", deleteCinema);
 
 export default adminCinemaRouter;

@@ -23,11 +23,9 @@ export const addSeatType = async (req, res) => {
 
 export const updateSeatType = async (req, res) => {
   try {
-    const { id } = req.params;
-    const validate = submitSeatType(req.body);
-    if (validate)
-      return sendError(res, "required fields are missing or invalid");
-    const updatedSeatType = await SeatType.findByIdAndUpdate(id, req.body);
+    const { _id, ...updateData } = req.body;
+    if (!_id) return sendError(res, "Thiếu _id", 400);
+    const updatedSeatType = await SeatType.findByIdAndUpdate(_id, updateData, { new: true });
     if (!updatedSeatType) return sendError(res, "SeatType not found");
     return sendSuccess(res, "SeatType updated successfully", updatedSeatType);
   } catch (err) {
