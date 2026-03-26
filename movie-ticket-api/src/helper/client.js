@@ -1,15 +1,7 @@
 import axios from 'axios'
 
 export const sendSuccess = (res, message, data = null) => {
-  let responseJson = {
-    success: true,
-    message: message,
-  };
-  if (data) {
-    // Trả về đúng cấu trúc ban đầu: data chứa content
-    responseJson.content = data;
-  }
-  return res.status(200).json(responseJson);
+  return res.status(200).json({ success: true, message, content: data });
 };
 
 export const sendError = (res, message, code = 400) => {
