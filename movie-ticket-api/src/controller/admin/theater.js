@@ -5,16 +5,14 @@ import asyncHandler from "../../util/asyncHandler.js";
 
 export const getAllTheaters = asyncHandler(async (req, res) => {
   const theaters = await Theater.find().populate("cinema").lean();
-  return sendSuccess(res, "Lấy danh sách phòng chiếu thành công", theaters);
+  return sendSuccess(res, "Lấy danh sách phòng chiếu thành công", { theaters });
 });
 
 export const getTheaterById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const theater = await Theater.findById(id)
-    .populate("cinema")
-    .populate("seats.seatType");
+  const theater = await Theater.findById(id).populate("cinema").populate("seats.seatType");
   if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
-  return sendSuccess(res, "Lấy thông tin phòng chiếu thành công", theater);
+  return sendSuccess(res, "Lấy thông tin phòng chiếu thành công", { theater });
 });
 
 export const addTheater = asyncHandler(async (req, res) => {

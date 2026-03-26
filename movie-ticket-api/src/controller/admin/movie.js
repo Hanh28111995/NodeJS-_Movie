@@ -10,9 +10,7 @@ import fs from "fs";
 
 export const getAllMovies = asyncHandler(async (req, res) => {
   const movies = await Movie.find().sort({ title: 1 }).lean();
-  return sendSuccess(res, "All movies retrieved successfully", {
-    movies: movies,
-  });
+  return sendSuccess(res, "All movies retrieved successfully", {movies});
 });
 
 export const addMovie = asyncHandler(async (req, res) => {

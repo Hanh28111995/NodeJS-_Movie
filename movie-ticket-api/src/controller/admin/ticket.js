@@ -14,8 +14,8 @@ export const getAllTickets = asyncHandler(async (req, res) => {
 
 export const getTicketById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const aTicket = await ticketService.getTicketById(id);
-  return sendSuccess(res, "Ticket found", aTicket);
+  const ticket = await ticketService.getTicketById(id);
+  return sendSuccess(res, "Ticket found", { ticket });
 });
 
 export const addTicket = asyncHandler(async (req, res) => {

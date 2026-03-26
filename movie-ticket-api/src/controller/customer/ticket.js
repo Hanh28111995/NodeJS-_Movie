@@ -5,7 +5,7 @@ import asyncHandler from "../../util/asyncHandler.js";
 export const getMytickets = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const tickets = await ticketService.getUserTickets(userId);
-  return sendSuccess(res, "User tickets retrieved successfully", tickets);
+  return sendSuccess(res, "User tickets retrieved successfully", { tickets });
 });
 
 export const bookMytickets = asyncHandler(async (req, res) => {

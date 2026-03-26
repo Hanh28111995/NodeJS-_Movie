@@ -5,7 +5,7 @@ import asyncHandler from "../../util/asyncHandler.js";
 
 export const getSeatType = asyncHandler(async (req, res) => {
   const seatTypes = await SeatType.find().lean();
-  return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
+  return sendSuccess(res, "All seat types retrieved successfully", { seatTypes });
 });
 
 export const addSeatType = async (req, res) => {

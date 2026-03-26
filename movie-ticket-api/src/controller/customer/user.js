@@ -8,7 +8,7 @@ import asyncHandler from "../../util/asyncHandler.js";
 export const getMyProfile = asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const user = await User.findById(userId).select("-password -refreshToken");
-  return sendSuccess(res, "Lấy thông tin cá nhân thành công", user);
+  return sendSuccess(res, "Lấy thông tin cá nhân thành công", { user });
 });
 
 /**

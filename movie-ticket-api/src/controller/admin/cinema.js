@@ -4,7 +4,7 @@ import asyncHandler from "../../util/asyncHandler.js";
 
 export const getAllCinemas = asyncHandler(async (req, res) => {
   const cinemas = await Cinema.find().lean();
-  return sendSuccess(res, "Lấy danh sách rạp phim thành công", cinemas);
+  return sendSuccess(res, "Lấy danh sách rạp phim thành công", { cinemas });
 });
 
 export const addCinema = asyncHandler(async (req, res) => {

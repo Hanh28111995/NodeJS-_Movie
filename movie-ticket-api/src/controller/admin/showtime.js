@@ -43,13 +43,8 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
   }));
 
   return sendSuccess(res, "All showtimes retrieved successfully", {
-    data: result,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
+    showtimes: result,
+    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
   });
 });
 
@@ -79,8 +74,7 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
     .lean();
 
   return sendSuccess(res, "Showtime retrieved successfully", {
-    ...updatedShowtime,
-    id_movie: movie || updatedShowtime.id_movie,
+    showtime: { ...updatedShowtime, id_movie: movie || updatedShowtime.id_movie },
   });
 });
 
@@ -106,7 +100,7 @@ export const getUpcomingShowtimes = asyncHandler(async (req, res) => {
     .select("_id startTime theater id_movie")
     .sort({ startTime: 1 })
     .lean();
-  return sendSuccess(res, "Upcoming showtimes retrieved successfully", showtimes);
+  return sendSuccess(res, "Upcoming showtimes retrieved successfully", { showtimes });
 });
 
 // GET TODAY - lịch chiếu trong ngày hôm nay theo giờ VN (UTC+7)
@@ -128,5 +122,5 @@ export const getShowtimesToday = asyncHandler(async (req, res) => {
     .select("_id startTime theater id_movie")
     .sort({ startTime: 1 })
     .lean();
-  return sendSuccess(res, "Today's showtimes retrieved successfully", showtimes);
+  return sendSuccess(res, "Today's showtimes retrieved successfully", { showtimes });
 });
