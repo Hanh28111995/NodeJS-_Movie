@@ -52,7 +52,7 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
 export const getShowtimeById = asyncHandler(async (req, res) => {
   const showtime = await Showtime.findById(req.params.id)
     .populate("cinema")
-    .populate("theater")
+    .populate("theater", "-seats")
     .lean();
 
   if (!showtime)
@@ -68,7 +68,7 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
 
   const updatedShowtime = await Showtime.findById(req.params.id)
     .populate("cinema")
-    .populate("theater")
+    .populate("theater", "-seats")
     .lean();
 
   return sendSuccess(res, "Showtime retrieved successfully", {
