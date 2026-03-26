@@ -9,8 +9,19 @@ import { bucket } from "../../middleware/firebase.js";
 import fs from "fs";
 
 export const getAllMovies = asyncHandler(async (req, res) => {
-  const movies = await Movie.find().sort({ title: 1 }).lean();
-  return sendSuccess(res, "All movies retrieved successfully", {movies});
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
+
+  const [movies, total] = await Promise.all([
+    Movie.find().sort({ title: 1 }).skip(skip).limit(limit).lean(),
+    Movie.countDocuments(),
+  ]);
+
+  return sendSuccess(res, "All movies retrieved successfully", {
+    movies,
+    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+  });
 });
 
 export const addMovie = asyncHandler(async (req, res) => {
