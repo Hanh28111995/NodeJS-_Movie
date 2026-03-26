@@ -21,12 +21,13 @@ export const createOneShowtime = async ({ theaterId, movieId, startTime }) => {
 
   const seatTypeIds = [...new Set(theater.seats.map(s => s.seatType?.toString()).filter(Boolean))];
   const seatTypes = await SeatType.find({ _id: { $in: seatTypeIds } }).lean();
-  const seatTypeMap = Object.fromEntries(seatTypes.map(st => [st._id.toString(), st.price]));
+  const seatTypeMap = Object.fromEntries(seatTypes.map(st => [st._id.toString(), { price: st.price, color: st.color }]));
 
   const seats = theater.seats.map(s => ({
     seatNumber: s.seatNumber,
     seatType: s.seatType,
-    price: seatTypeMap[s.seatType?.toString()] ?? 0,
+    price: seatTypeMap[s.seatType?.toString()]?.price ?? 0,
+    color: seatTypeMap[s.seatType?.toString()]?.color ?? "#cccccc",
     isBooked: false,
   }));
 

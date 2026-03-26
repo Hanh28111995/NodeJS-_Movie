@@ -1,7 +1,6 @@
 import { sendSuccess, sendError } from "../../helper/client.js";
 import Showtime from "../../model/showtimeModel.js";
 import Movie from "../../model/movieModel.js";
-import SeatType from "../../model/seatTypeModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import * as cronService from "../../service/cronService.js";
 import { createOneShowtime } from "../../service/showtimeService.js";
@@ -83,7 +82,7 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
   }));
 
   return sendSuccess(res, "Showtime retrieved successfully", {
-    showtime: { ...updatedShowtime, seats: enrichedSeats, id_movie: movie || updatedShowtime.id_movie },
+    showtime: { ...updatedShowtime, id_movie: movie || updatedShowtime.id_movie },
   });
 });
 

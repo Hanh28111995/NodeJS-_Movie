@@ -8,6 +8,7 @@ const seatSchema = new mongoose.Schema({
     required: true,
   },
   price: { type: Number, default: 0 },
+  color: { type: String, default: "#cccccc" },
   isBooked: { type: Boolean, default: false },
 });
 
