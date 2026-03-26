@@ -10,6 +10,6 @@ customerRouter.get("/profile", getMyProfile);
 customerRouter.put("/profile-update", updateMyProfile);
 
 customerRouter.use("/showtime", customerShowTimeRouter);
-customerRouter.use("/myticket", customerTicketRouter);
+customerRouter.use("/ticket", customerTicketRouter);
 
 export default customerRouter;
