@@ -1,7 +1,14 @@
 import axios from 'axios'
 
 export const sendSuccess = (res, message, data = null) => {
-  return res.status(200).json({ success: true, message, content: data });
+  let responseJson = {
+    success: true,
+    message: message,
+  };
+  if (data !== null && data !== undefined) {
+    responseJson.content = data;
+  }
+  return res.status(200).json(responseJson);
 };
 
 export const sendError = (res, message, code = 400) => {
