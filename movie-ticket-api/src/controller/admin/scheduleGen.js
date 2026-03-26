@@ -4,7 +4,6 @@ import * as scheduleGenService from "../../service/scheduleGenService.js";
 
 export const getSchedulePlan = asyncHandler(async (req, res) => {
   const config = await scheduleGenService.getConfig();
-  if (!config) return sendError(res, "Chưa có cấu hình lịch chiếu", 404);
   return sendSuccess(res, "Lấy cấu hình thành công", config);
 });
 
