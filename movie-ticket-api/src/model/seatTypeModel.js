@@ -12,7 +12,11 @@ const seatTypeSchema = new mongoose.Schema(
       required: true, // giá mặc định
     },
     description: {
-      type: String, // ví dụ: "Ghế VIP có tựa tay, rộng hơn ghế thường"
+      type: String,
+    },
+    color: {
+      type: String,
+      default: "#cccccc", // màu mặc định
     },
   },
   {

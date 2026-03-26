@@ -1,6 +1,7 @@
 import { sendSuccess, sendError } from "../../helper/client.js";
 import Showtime from "../../model/showtimeModel.js";
 import Movie from "../../model/movieModel.js";
+import SeatType from "../../model/seatTypeModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import * as cronService from "../../service/cronService.js";
 import { createOneShowtime } from "../../service/showtimeService.js";
@@ -56,11 +57,9 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
     .lean();
 
   if (!showtime)
-    return sendSuccess(res, "Showtime retrieved successfully", showtime);
+    return sendSuccess(res, "Showtime retrieved successfully", { showtime });
 
-  const movie = await Movie.findById(showtime.id_movie)
-    .select("_id title")
-    .lean();
+  const movie = await Movie.findById(showtime.id_movie).select("_id title").lean();
 
   await cronService.cleanupExpiredTicketsByShowtime(
     showtime.id_movie?.toString(),
@@ -73,8 +72,18 @@ export const getShowtimeById = asyncHandler(async (req, res) => {
     .populate("theater")
     .lean();
 
+  // Enrich color từ SeatType vào từng seat
+  const seatTypeIds = [...new Set(updatedShowtime.seats.map(s => s.seatType?.toString()).filter(Boolean))];
+  const seatTypes = await SeatType.find({ _id: { $in: seatTypeIds } }).select("_id color").lean();
+  const colorMap = Object.fromEntries(seatTypes.map(st => [st._id.toString(), st.color]));
+
+  const enrichedSeats = updatedShowtime.seats.map(s => ({
+    ...s,
+    color: colorMap[s.seatType?.toString()] || "#cccccc",
+  }));
+
   return sendSuccess(res, "Showtime retrieved successfully", {
-    showtime: { ...updatedShowtime, id_movie: movie || updatedShowtime.id_movie },
+    showtime: { ...updatedShowtime, seats: enrichedSeats, id_movie: movie || updatedShowtime.id_movie },
   });
 });
 
