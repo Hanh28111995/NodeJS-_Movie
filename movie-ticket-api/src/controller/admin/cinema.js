@@ -3,7 +3,7 @@ import Cinema from "../../model/cinemaModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 
 export const getAllCinemas = asyncHandler(async (req, res) => {
-  const cinemas = await Cinema.find();
+  const cinemas = await Cinema.find().lean();
   return sendSuccess(res, "Lấy danh sách rạp phim thành công", cinemas);
 });
 

@@ -1,16 +1,12 @@
 import { sendError, sendServerError, sendSuccess } from "../../helper/client.js";
 import SeatType from "../../model/seatTypeModel.js";
 import { submitSeatType } from "../../validation/index.js";
+import asyncHandler from "../../util/asyncHandler.js";
 
-export const getSeatType = async (req, res) => {
-    try {
-        const seatTypes =  await SeatType.find();
-        return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
-    } catch (err) {
-        console.log(err);
-        return sendServerError(res);
-    }
-};
+export const getSeatType = asyncHandler(async (req, res) => {
+  const seatTypes = await SeatType.find().lean();
+  return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
+});
 
 export const addSeatType = async (req, res) => {
   try {
