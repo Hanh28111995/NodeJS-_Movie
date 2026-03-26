@@ -4,6 +4,7 @@ import { createOneShowtime } from "./showtimeService.js";
 
 const VN_OFFSET = 7 * 60 * 60 * 1000;
 
+
 export const getConfig = async () => {
   return await ScheduleConfig.findOne().lean();
 };
@@ -34,30 +35,30 @@ export const generate = async () => {
   let created = 0, updated = 0;
 
   for (const theaterId of config.theaters) {
-    for (const movieId of config.movie_ids) {
-      for (const slot of config.timeSlots) {
-        const [hour, minute] = slot.split(":").map(Number);
-        const startTime = new Date(todayVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
+    for (let i = 0; i < config.timeSlots.length; i++) {
+      const slot = config.timeSlots[i];
+      const movieId = config.movie_ids[i % config.movie_ids.length];
+      const [hour, minute] = slot.split(":").map(Number);
+      const startTime = new Date(todayVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
 
-        const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
-        if (exists) { updated++; continue; }
+      const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
+      if (exists) { updated++; continue; }
 
-        const old = await Showtime.findOne({
-          theater: theaterId,
-          id_movie: movieId,
-          startTime: { $gte: new Date(startTime.getTime() - 86400000 * 30), $lt: startTime },
-        }).sort({ startTime: -1 });
+      const old = await Showtime.findOne({
+        theater: theaterId,
+        id_movie: movieId,
+        startTime: { $gte: new Date(startTime.getTime() - 86400000 * 30), $lt: startTime },
+      }).sort({ startTime: -1 });
 
-        if (old) {
-          old.startTime = startTime;
-          await old.save();
-          updated++;
-        } else {
-          try {
-            await createOneShowtime({ theaterId, movieId, startTime });
-            created++;
-          } catch { /* skip */ }
-        }
+      if (old) {
+        old.startTime = startTime;
+        await old.save();
+        updated++;
+      } else {
+        try {
+          await createOneShowtime({ theaterId, movieId, startTime });
+          created++;
+        } catch { /* skip */ }
       }
     }
   }
