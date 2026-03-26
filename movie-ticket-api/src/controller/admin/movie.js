@@ -1,4 +1,8 @@
-import { sendSuccess, sendError, sendServerError } from "../../helper/client.js";
+import {
+  sendSuccess,
+  sendError,
+  sendServerError,
+} from "../../helper/client.js";
 import Movie from "../../model/movieModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import { bucket } from "../../middleware/firebase.js";
@@ -6,7 +10,9 @@ import fs from "fs";
 
 export const getAllMovies = asyncHandler(async (req, res) => {
   const movies = await Movie.find().sort({ title: 1 }).lean();
-  return sendSuccess(res, "All movies retrieved successfully", movies);
+  return sendSuccess(res, "All movies retrieved successfully", {
+    movies: movies,
+  });
 });
 
 export const addMovie = asyncHandler(async (req, res) => {
@@ -49,7 +55,11 @@ export const updateMovie = asyncHandler(async (req, res) => {
     fs.unlinkSync(localPath);
   }
 
-  const updatedMovie = await Movie.findOneAndUpdate({ id_movie: movieid }, updateData, { new: true });
+  const updatedMovie = await Movie.findOneAndUpdate(
+    { id_movie: movieid },
+    updateData,
+    { new: true },
+  );
 
   if (req.file && movie.banner) {
     try {
