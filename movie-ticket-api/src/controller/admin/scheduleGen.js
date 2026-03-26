@@ -3,8 +3,8 @@ import { sendSuccess, sendError } from "../../helper/client.js";
 import * as scheduleGenService from "../../service/scheduleGenService.js";
 
 export const getSchedulePlan = asyncHandler(async (req, res) => {
-  const config = await scheduleGenService.getConfig();
-  return sendSuccess(res, "Lấy cấu hình thành công", config);
+  const schedule = await scheduleGenService.getConfig();
+  return sendSuccess(res, "Lấy cấu hình thành công", {schedule});
 });
 
 export const createSchedulePlan = asyncHandler(async (req, res) => {
