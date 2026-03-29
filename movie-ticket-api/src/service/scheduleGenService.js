@@ -25,6 +25,15 @@ export const updateConfig = async ({ movie_ids, timeSlots, theaters, scheduleTim
   return config;
 };
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export const generate = async () => {
   const config = await ScheduleConfig.findOne({ isActive: true });
   if (!config) return { created: 0, updated: 0, message: "Không có cấu hình đang hoạt động" };
@@ -32,7 +41,6 @@ export const generate = async () => {
   const nowVN = new Date(Date.now() + VN_OFFSET);
   const todayVN = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()));
 
-  // Check xem hôm nay đã có showtime chưa (theo bất kỳ theater nào trong config)
   const firstSlot = config.timeSlots[0];
   const [fh, fm] = firstSlot.split(":").map(Number);
   const todayFirstSlotUTC = new Date(todayVN.getTime() + (fh * 60 + fm) * 60000 - VN_OFFSET);
@@ -42,7 +50,6 @@ export const generate = async () => {
     startTime: todayFirstSlotUTC,
   });
 
-  // Nếu hôm nay đã có → generate cho ngày mai
   const targetVN = todayExists
     ? new Date(todayVN.getTime() + 86400000)
     : todayVN;
@@ -50,30 +57,33 @@ export const generate = async () => {
   let created = 0, updated = 0;
 
   for (const theaterId of config.theaters) {
-    for (let i = 0; i < config.timeSlots.length; i++) {
-      const slot = config.timeSlots[i];
-      const movieId = config.movie_ids[i % config.movie_ids.length];
-      const [hour, minute] = slot.split(":").map(Number);
-      const startTime = new Date(targetVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
+    for (const movieId of config.movie_ids) {
+      // Shuffle timeSlots riêng cho mỗi phim
+      const shuffledSlots = shuffle(config.timeSlots);
 
-      const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
-      if (exists) { updated++; continue; }
+      for (const slot of shuffledSlots) {
+        const [hour, minute] = slot.split(":").map(Number);
+        const startTime = new Date(targetVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
 
-      const old = await Showtime.findOne({
-        theater: theaterId,
-        id_movie: movieId,
-        startTime: { $gte: new Date(startTime.getTime() - 86400000 * 30), $lt: startTime },
-      }).sort({ startTime: -1 });
+        const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
+        if (exists) { updated++; continue; }
 
-      if (old) {
-        old.startTime = startTime;
-        await old.save();
-        updated++;
-      } else {
-        try {
-          await createOneShowtime({ theaterId, movieId, startTime });
-          created++;
-        } catch { /* skip */ }
+        const old = await Showtime.findOne({
+          theater: theaterId,
+          id_movie: movieId,
+          startTime: { $gte: new Date(startTime.getTime() - 86400000 * 30), $lt: startTime },
+        }).sort({ startTime: -1 });
+
+        if (old) {
+          old.startTime = startTime;
+          await old.save();
+          updated++;
+        } else {
+          try {
+            await createOneShowtime({ theaterId, movieId, startTime });
+            created++;
+          } catch { /* skip */ }
+        }
       }
     }
   }
