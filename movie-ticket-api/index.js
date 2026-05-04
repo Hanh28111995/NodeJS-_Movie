@@ -49,8 +49,7 @@ app.use(
 
       const allowedOrigins = [
         process.env.FRONTEND_URL,
-        "https://moviebooking-ht.vercel.app",
-        "https://movie-booking-ht.vercel.app",
+        "https://moviebooking-ht.vercel.app",        
         "https://node-js-movie-tau.vercel.app" // Thêm domain backend có thể là frontend luôn
       ].filter(Boolean);
       
@@ -60,7 +59,8 @@ app.use(
       if (isAllowed) {
         callback(null, true);
       } else {
-        // Thay vì báo lỗi, trả về false để middleware tự xử lý
+        // Nếu không nằm trong list, vẫn cho qua nhưng không gửi kèm credentials (cookie)
+        // trừ khi origin là null (cho mobile/postman)
         callback(null, false);
       }
     },
