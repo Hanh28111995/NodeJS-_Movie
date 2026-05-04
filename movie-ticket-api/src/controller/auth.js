@@ -63,7 +63,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
   const { token } = req.body;
   const result = await authService.googleLogin(token);
 
-  res.cookie("refreshToken", result.refreshToken, getCookieOptions());
+  res.cookie("refreshToken", result.refreshToken, COOKIE_OPTIONS);
 
   const { refreshToken, ...dataRes } = result;
   return sendSuccess(res, "Google login successful", dataRes);
