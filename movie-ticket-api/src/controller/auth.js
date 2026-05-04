@@ -17,7 +17,9 @@ export const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
   const result = await authService.login(username, password);
 
-  res.cookie("refreshToken", result.refreshToken, getCookieOptions());
+  const cookieOpts = getCookieOptions();
+  console.log("Setting refreshToken cookie with options:", cookieOpts);
+  res.cookie("refreshToken", result.refreshToken, cookieOpts);
 
   const { refreshToken, ...dataRes } = result;
   return sendSuccess(res, "Login successful", dataRes);
@@ -42,6 +44,10 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const refreshToken = asyncHandler(async (req, res) => {
+  console.log("--- Refresh Token Debug ---");
+  console.log("Cookies received:", req.cookies);
+  console.log("refreshToken in cookies:", req.cookies?.refreshToken ? "Present" : "Missing");
+
   const rToken = req.cookies.refreshToken;
 
   if (!rToken) {

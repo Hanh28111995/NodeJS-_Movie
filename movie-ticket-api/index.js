@@ -38,6 +38,8 @@ Create Express server
 const SESSION_AGE = 1000 * 60 * 60 * 2;
 const app = express();
 
+app.set("trust proxy", 1); // Cần thiết để cookie secure: true hoạt động qua proxy (Vercel)
+
 app.use(cookieParser());
 app.use(
   cors({
