@@ -41,8 +41,26 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL || "http://localhost:3000"],
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://moviebooking-ht.vercel.app"
+      ].filter(Boolean);
+      
+      // Cho phép các request không có origin (như Postman hoặc mobile app)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
   })
 );
 
