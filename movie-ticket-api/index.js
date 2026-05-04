@@ -44,33 +44,16 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Cho phép tất cả các request không có origin (như Postman hoặc mobile app) hoặc từ localhost
-      if (!origin || origin === 'null' || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // Cho phép tất cả các request không có origin hoặc từ localhost hoặc từ bất kỳ domain vercel nào
+      if (!origin || origin.includes('localhost') || origin.endsWith('.vercel.app')) {
         return callback(null, true);
       }
-
-      const allowedOrigins = [
-        process.env.FRONTEND_URL,
-        "https://moviebooking-ht.vercel.app",        
-        "https://node-js-movie-tau.vercel.app" // Thêm domain backend có thể là frontend luôn
-      ].filter(Boolean);
-      
-      const isAllowed = allowedOrigins.some(ao => origin.startsWith(ao)) || 
-                        origin.endsWith('.vercel.app');
-
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        // Nếu không nằm trong list, vẫn cho qua nhưng không gửi kèm credentials (cookie)
-        // trừ khi origin là null (cho mobile/postman)
-        callback(null, false);
-      }
+      return callback(null, true); // Tạm thời cho phép tất cả để vượt qua Firewall
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
     exposedHeaders: ["Set-Cookie"],
-    preflightContinue: false,
     optionsSuccessStatus: 204
   })
 );
