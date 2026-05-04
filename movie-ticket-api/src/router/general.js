@@ -16,14 +16,14 @@ const setCache = (req, res, next) => {
   next();
 };
 
-generalRouter.get("/showingMovies", setCache, asyncHandler(async (req, res) => {
+generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
   const now = new Date();
   const showtimes = await Showtime.find({ startTime: { $gte: now } }).populate("id_movie").lean();
   const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
   return sendSuccess(res, "Now showing movies retrieved successfully", movies);
 }));
 
-generalRouter.get("/comingMovies", setCache, asyncHandler(async (req, res) => {
+generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
   const now = new Date();
   const showtimes = await Showtime.find({ startTime: { $gt: now } }).populate("id_movie").lean();
   const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
@@ -38,7 +38,7 @@ generalRouter.get("/comingMovies", setCache, asyncHandler(async (req, res) => {
   return sendSuccess(res, "Coming soon movies retrieved successfully", formattedMovies);
 }));
 
-generalRouter.get("/showBanners", setCache, asyncHandler(async (req, res) => {
+generalRouter.get("/showBanners", asyncHandler(async (req, res) => {
   // Lấy 5 phim mới nhất để làm banner
   const movies = await Movie.find()
     .sort({ createdAt: -1 })
@@ -55,7 +55,7 @@ generalRouter.get("/showBanners", setCache, asyncHandler(async (req, res) => {
   return sendSuccess(res, "Banners retrieved successfully", banners);
 }));
 
-generalRouter.get("/movie/all", setCache, asyncHandler(async (req, res) => {
+generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
   const { title } = req.query;
   const query = title ? { title: { $regex: title, $options: "i" } } : {};
   const movies = await Movie.find(query).sort({ releaseDate: -1 }).lean();

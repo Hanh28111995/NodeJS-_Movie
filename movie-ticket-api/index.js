@@ -43,16 +43,10 @@ app.set("trust proxy", 1); // Cần thiết để cookie secure: true hoạt đ�
 app.use(cookieParser());
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Cho phép tất cả các request không có origin hoặc từ localhost hoặc từ bất kỳ domain vercel nào
-      if (!origin || origin.includes('localhost') || origin.endsWith('.vercel.app')) {
-        return callback(null, true);
-      }
-      return callback(null, true); // Tạm thời cho phép tất cả để vượt qua Firewall
-    },
+    origin: ["https://moviebooking-ht.vercel.app", "http://localhost:3000", "http://localhost:5173"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "X-Api-Version"],
     exposedHeaders: ["Set-Cookie"],
     optionsSuccessStatus: 204
   })
