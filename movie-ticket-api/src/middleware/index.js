@@ -83,7 +83,7 @@ export const verifyAdmin = async (req, res, next) => {
 };
 
 export const verifyStaff = async (req, res, next) => {
-  if (req.user.role !== "staff") return sendError(res, "Forbidden.", 403);
+  if (req.user.role !== "staff" && req.user.role !== "admin") return sendError(res, "Forbidden.", 403);
     next()
 }
 
