@@ -15,6 +15,7 @@ import {
   verifyAdmin,
   verifyCustomer,
   verifyToken,
+  verifyStaff 
 } from "./src/middleware/index.js";
 import uploadRouter from "./src/router/uploads/uploads.js";
 import generalRouter from "./src/router/general.js";
@@ -60,7 +61,7 @@ app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
 
 app.use("/api/customer", verifyToken, verifyCustomer, customerTicketRouter);
 
-app.use("/api/staff", verifyToken, staffRouter);
+app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
 
 app.use("/api/general", generalRouter);
 app.use("/api/auth", authRouter);

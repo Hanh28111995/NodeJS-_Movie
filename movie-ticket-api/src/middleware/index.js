@@ -82,11 +82,10 @@ export const verifyAdmin = async (req, res, next) => {
   next();
 };
 
-// export const verifyStaff = async (req, res, next) => {
-//     if (! req.user.role.hasOwnProperty('staff_type'))
-//         return sendError(res, 'Forbidden.',403)
-//     next()
-// }
+export const verifyStaff = async (req, res, next) => {
+  if (req.user.role !== "staff") return sendError(res, "Forbidden.", 403);
+    next()
+}
 
 export const verifyCustomer = async (req, res, next) => {
   if (req.user.role !== "customer") return sendError(res, "Forbidden.", 403);

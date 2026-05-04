@@ -17,6 +17,10 @@ const movieSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    showing: {
+      type: Boolean,
+      required: false,
+    },
     coming: {
       type: Boolean,
       required: false,
