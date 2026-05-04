@@ -9,13 +9,6 @@ import SeatType from "../model/seatTypeModel.js";
 
 const generalRouter = express.Router();
 
-// Middleware để thêm cache header cho các API lấy dữ liệu công khai
-const setCache = (req, res, next) => {
-  // Cache 1 phút, cho phép sử dụng dữ liệu cũ trong 30 giây khi đang revalidate
-  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
-  next();
-};
-
 generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
   const now = new Date();
   const showtimes = await Showtime.find({ startTime: { $gte: now } }).populate("id_movie").lean();

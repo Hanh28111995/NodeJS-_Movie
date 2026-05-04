@@ -38,17 +38,11 @@ Create Express server
 const SESSION_AGE = 1000 * 60 * 60 * 2;
 const app = express();
 
-app.set("trust proxy", 1); // Cần thiết để cookie secure: true hoạt động qua proxy (Vercel)
-
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["https://moviebooking-ht.vercel.app", "http://localhost:3000", "http://localhost:5173"],
+    origin: [process.env.FRONTEND_URL || "http://localhost:3000"],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "X-Api-Version"],
-    exposedHeaders: ["Set-Cookie"],
-    optionsSuccessStatus: 204
   })
 );
 
@@ -59,20 +53,20 @@ app.use(express.json());
 app.use("/api", dbMiddleware);
 
 /*
-Link to router - Public Routes first
+Link to router
  */
+app.use("/api/uploads", verifyToken, uploadRouter);
+
+app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
+
+app.use("/api/customer", verifyToken, verifyCustomer, customerTicketRouter);
+
+app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
+
 app.use("/api/general", generalRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/cron", cronRouter);
-
-/*
-Link to router - Protected Routes
- */
-app.use("/api/uploads", verifyToken, uploadRouter);
-app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
-app.use("/api/customer", verifyToken, verifyCustomer, customerTicketRouter);
-app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
 
 // Middleware xử lý lỗi tập trung
 app.use(errorHandler);
