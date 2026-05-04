@@ -29,3 +29,14 @@ export const markNotificationAsRead = asyncHandler(async (req, res) => {
 
   return sendSuccess(res, "Notification marked as read", notification);
 });
+
+export const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  await Notification.updateMany(
+    { id_user: userId, status: false },
+    { status: true }
+  );
+
+  return sendSuccess(res, "All notifications marked as read");
+});

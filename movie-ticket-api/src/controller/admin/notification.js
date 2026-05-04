@@ -34,3 +34,15 @@ export const markNotificationAsReadByAdmin = asyncHandler(async (req, res) => {
 
   return sendSuccess(res, "Notification marked as read", notification);
 });
+
+/**
+ * @desc Đánh dấu tất cả thông báo là đã đọc (Dành cho Admin/Staff)
+ */
+export const markAllNotificationsAsReadByAdmin = asyncHandler(async (req, res) => {
+  await Notification.updateMany(
+    { status: false },
+    { status: true }
+  );
+
+  return sendSuccess(res, "All notifications marked as read");
+});
