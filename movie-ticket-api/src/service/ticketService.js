@@ -99,8 +99,13 @@ export const confirmTicketPayment = async (ticketId) => {
   const ticket = await InforTicket.findById(ticketId);
   if (!ticket) throw new Error("Ticket not found");
   
-  ticket.paymentStatus = "Completed";
-  const savedTicket = await ticket.save();
+  await InforTicket.updateOne(
+    { _id: ticketId },
+    { $set: { paymentStatus: "Completed" } }
+  );
+
+  // Lấy lại ticket sau khi update để trả về
+  const updatedTicket = await InforTicket.findById(ticketId);
 
   // Update notification khi ticket được confirm
   await Notification.findOneAndUpdate(
@@ -113,15 +118,17 @@ export const confirmTicketPayment = async (ticketId) => {
     { upsert: true }
   );
 
-  return savedTicket;
+  return updatedTicket;
 };
 
 export const cancelTicket = async (ticketId) => {
   const ticket = await InforTicket.findById(ticketId);
   if (!ticket) throw new Error("Ticket not found");
 
-  ticket.paymentStatus = "Failed";
-  const savedTicket = await ticket.save();
+  await InforTicket.updateOne(
+    { _id: ticketId },
+    { $set: { paymentStatus: "Failed" } }
+  );
 
   // Release ghế về isBooked = false
   if (ticket.showtime_id && ticket.seatName?.length > 0) {
@@ -144,5 +151,5 @@ export const cancelTicket = async (ticketId) => {
     { upsert: true }
   );
 
-  return savedTicket;
+  return await InforTicket.findById(ticketId);
 };

@@ -58,21 +58,31 @@ export const cleanupExpiredTickets = async () => {
 
   for (const ticket of expiredTickets) {
     try {
-      const seatNumbers = ticket.seatName
-        .map(s => (typeof s === "object" ? s.seatNumber : s))
-        .filter(Boolean);
+      // Chỉ giải phóng ghế nếu có đủ thông tin suất chiếu
+      if (ticket.id_movie && ticket.id_theater && ticket.startTime) {
+        const seatNumbers = ticket.seatName
+          .map(s => (typeof s === "object" ? s.seatNumber : s))
+          .filter(Boolean);
 
-      await Showtime.updateOne(
-        { id_movie: ticket.id_movie, theater: ticket.id_theater, startTime: ticket.startTime },
-        { $set: { "seats.$[seat].isBooked": false } },
-        { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
+        if (seatNumbers.length > 0) {
+          await Showtime.updateOne(
+            { id_movie: ticket.id_movie, theater: ticket.id_theater, startTime: ticket.startTime },
+            { $set: { "seats.$[seat].isBooked": false } },
+            { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
+          );
+        }
+      } else {
+        console.warn(`[Cron] Vé ${ticket._id} thiếu thông tin suất chiếu, không thể giải phóng ghế.`);
+      }
+
+      // Cập nhật trạng thái vé bằng updateOne để tránh trigger validation lỗi cho các field cũ bị thiếu
+      await InforTicket.updateOne(
+        { _id: ticket._id },
+        { $set: { paymentStatus: "Failed" } }
       );
-
-      ticket.paymentStatus = "Failed";
-      await ticket.save();
       processedCount++;
     } catch (err) {
-      console.error(`[Cron] Lỗi vé ${ticket._id}:`, err.message);
+      console.error(`[Cron] Lỗi xử lý vé ${ticket._id}:`, err.message);
     }
   }
 

@@ -42,25 +42,34 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: function (origin, callback) {
+      // Cho phép tất cả các request không có origin (như Postman hoặc mobile app) hoặc từ localhost
+      if (!origin || origin === 'null' || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+
       const allowedOrigins = [
         process.env.FRONTEND_URL,
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "https://moviebooking-ht.vercel.app"
+        "https://moviebooking-ht.vercel.app",
+        "https://movie-booking-ht.vercel.app",
+        "https://node-js-movie-tau.vercel.app" // Thêm domain backend có thể là frontend luôn
       ].filter(Boolean);
       
-      // Cho phép các request không có origin (như Postman hoặc mobile app)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      const isAllowed = allowedOrigins.some(ao => origin.startsWith(ao)) || 
+                        origin.endsWith('.vercel.app');
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        // Thay vì báo lỗi, trả về false để middleware tự xử lý
+        callback(null, false);
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    exposedHeaders: ["Set-Cookie"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
@@ -71,20 +80,20 @@ app.use(express.json());
 app.use("/api", dbMiddleware);
 
 /*
-Link to router
+Link to router - Public Routes first
  */
-app.use("/api/uploads", verifyToken, uploadRouter);
-
-app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
-
-app.use("/api/customer", verifyToken, verifyCustomer, customerTicketRouter);
-
-app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
-
 app.use("/api/general", generalRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/cron", cronRouter);
+
+/*
+Link to router - Protected Routes
+ */
+app.use("/api/uploads", verifyToken, uploadRouter);
+app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
+app.use("/api/customer", verifyToken, verifyCustomer, customerTicketRouter);
+app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
 
 // Middleware xử lý lỗi tập trung
 app.use(errorHandler);

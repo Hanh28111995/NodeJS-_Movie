@@ -34,59 +34,71 @@ function shuffle(arr) {
   return a;
 }
 
-export const generate = async () => {
+export const generate = async (daysToGenerate = 7) => {
   const config = await ScheduleConfig.findOne({ isActive: true });
   if (!config) return { created: 0, updated: 0, message: "Không có cấu hình đang hoạt động" };
 
   const nowVN = new Date(Date.now() + VN_OFFSET);
   const todayVN = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()));
 
-  const firstSlot = config.timeSlots[0];
-  const [fh, fm] = firstSlot.split(":").map(Number);
-  const todayFirstSlotUTC = new Date(todayVN.getTime() + (fh * 60 + fm) * 60000 - VN_OFFSET);
+  let totalCreated = 0, totalUpdated = 0;
+  const processedDates = [];
 
-  const todayExists = await Showtime.findOne({
-    theater: { $in: config.theaters },
-    startTime: todayFirstSlotUTC,
-  });
+  // Tạo suất chiếu cho N ngày tiếp theo (mặc định 7 ngày)
+  for (let i = 0; i < daysToGenerate; i++) {
+    const targetVN = new Date(todayVN.getTime() + i * 86400000);
+    processedDates.push(targetVN.toISOString().split('T')[0]);
 
-  const targetVN = todayExists
-    ? new Date(todayVN.getTime() + 86400000)
-    : todayVN;
+    for (const theaterId of config.theaters) {
+      // Mỗi rạp, mỗi phim sẽ có danh sách slot được shuffle khác nhau để đa dạng
+      for (const movieId of config.movie_ids) {
+        const shuffledSlots = shuffle(config.timeSlots);
 
-  let created = 0, updated = 0;
+        for (const slot of shuffledSlots) {
+          const [hour, minute] = slot.split(":").map(Number);
+          const startTime = new Date(targetVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
 
-  for (const theaterId of config.theaters) {
-    for (const movieId of config.movie_ids) {
-      // Shuffle timeSlots riêng cho mỗi phim
-      const shuffledSlots = shuffle(config.timeSlots);
+          const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
+          if (exists) { 
+            totalUpdated++; 
+            continue; 
+          }
 
-      for (const slot of shuffledSlots) {
-        const [hour, minute] = slot.split(":").map(Number);
-        const startTime = new Date(targetVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
+          // Kiểm tra xem có suất chiếu nào của phim này tại rạp này trong quá khứ không để "tái sử dụng" hoặc tạo mới
+          // (Logic cũ của bạn là tái sử dụng suất chiếu cũ để tiết kiệm document, tôi giữ nguyên logic này)
+          const old = await Showtime.findOne({
+            theater: theaterId,
+            id_movie: movieId,
+            startTime: { $lt: startTime },
+            // Chỉ lấy suất chiếu cũ trong vòng 30 ngày và KHÔNG có ghế nào được đặt
+            "seats.isBooked": { $ne: true }
+          }).sort({ startTime: -1 });
 
-        const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
-        if (exists) { updated++; continue; }
-
-        const old = await Showtime.findOne({
-          theater: theaterId,
-          id_movie: movieId,
-          startTime: { $gte: new Date(startTime.getTime() - 86400000 * 30), $lt: startTime },
-        }).sort({ startTime: -1 });
-
-        if (old) {
-          old.startTime = startTime;
-          await old.save();
-          updated++;
-        } else {
-          try {
-            await createOneShowtime({ theaterId, movieId, startTime });
-            created++;
-          } catch { /* skip */ }
+          if (old) {
+            old.startTime = startTime;
+            // Reset trạng thái ghế khi tái sử dụng
+            if (old.seats) {
+              old.seats.forEach(s => s.isBooked = false);
+            }
+            await old.save();
+            totalUpdated++;
+          } else {
+            try {
+              await createOneShowtime({ theaterId, movieId, startTime });
+              totalCreated++;
+            } catch (err) {
+              console.error(`[ScheduleGen] Lỗi tạo suất chiếu: ${err.message}`);
+            }
+          }
         }
       }
     }
   }
 
-  return { created, updated, targetDate: targetVN.toISOString() };
+  return { 
+    created: totalCreated, 
+    updated: totalUpdated, 
+    message: `Đã duy trì suất chiếu cho ${daysToGenerate} ngày tới.`,
+    dates: processedDates 
+  };
 };
