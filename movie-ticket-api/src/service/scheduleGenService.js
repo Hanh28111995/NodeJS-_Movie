@@ -1,9 +1,12 @@
 import ScheduleConfig from "../model/scheduleConfigModel.js";
 import Showtime from "../model/showtimeModel.js";
-import { createOneShowtime } from "./showtimeService.js";
+import Theater from "../model/theaterModel.js";
+import Cinema from "../model/cinemaModel.js";
+import SeatType from "../model/seatTypeModel.js";
+import Movie from "../model/movieModel.js";
+import mongoose from "mongoose";
 
 const VN_OFFSET = 7 * 60 * 60 * 1000;
-
 
 export const getConfig = async () => {
   return await ScheduleConfig.findOne().lean();
@@ -25,80 +28,225 @@ export const updateConfig = async ({ movie_ids, timeSlots, theaters, scheduleTim
   return config;
 };
 
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+const parseSlot = (slot) => {
+  const [hour, minute] = String(slot).split(":").map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return { hour, minute };
+};
+
+const getVNDayStartUTC = (date) => {
+  const vn = new Date(date.getTime() + VN_OFFSET);
+  const y = vn.getUTCFullYear();
+  const m = vn.getUTCMonth();
+  const d = vn.getUTCDate();
+  return new Date(Date.UTC(y, m, d) - VN_OFFSET);
+};
+
+const slotToStartTime = (vnDayStartUTC, slot) => {
+  const parsed = parseSlot(slot);
+  if (!parsed) return null;
+  return new Date(vnDayStartUTC.getTime() + (parsed.hour * 60 + parsed.minute) * 60000);
+};
+
+export const generate = async () => {
+  try {
+    const config = await ScheduleConfig.findOne({ isActive: true }).lean();
+    if (!config) return { created: 0, updated: 0, skipped: 0, message: "Không có cấu hình đang hoạt động" };
+
+    const rawMovies = (config.movie_ids || []).map((m) => m?.toString?.()).filter(Boolean);
+    const rawTheaters = (config.theaters || []).map((t) => t?.toString?.()).filter(Boolean);
+    const timeSlots = (config.timeSlots || []).filter(Boolean);
+
+    if (rawMovies.length === 0 || rawTheaters.length === 0 || timeSlots.length === 0) {
+      return { created: 0, updated: 0, skipped: 0, message: "Cấu hình không hợp lệ (movie_ids/theaters/timeSlots)" };
+    }
+
+    const invalidMovieIds = rawMovies.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+    const invalidTheaterIds = rawTheaters.filter((id) => !mongoose.Types.ObjectId.isValid(id));
+    const validMovieIds = rawMovies.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const validTheaterIds = rawTheaters.filter((id) => mongoose.Types.ObjectId.isValid(id));
+
+    if (validMovieIds.length === 0 || validTheaterIds.length === 0) {
+      return {
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        message: "Cấu hình không hợp lệ (movie_ids/theaters không phải ObjectId hợp lệ)",
+        invalidMovieIds,
+        invalidTheaterIds,
+      };
+    }
+
+    const [existingMovies, theaterDocs] = await Promise.all([
+      Movie.find({ _id: { $in: validMovieIds } }).select("_id").lean(),
+      Theater.find({ _id: { $in: validTheaterIds } }).select("_id cinemaName seats").lean(),
+    ]);
+
+    const movies = existingMovies.map((m) => m._id.toString());
+    const theaters = theaterDocs.map((t) => t._id.toString());
+    const missingMovieIds = validMovieIds.filter((id) => !movies.includes(id));
+    const missingTheaterIds = validTheaterIds.filter((id) => !theaters.includes(id));
+
+    if (movies.length === 0 || theaters.length === 0) {
+      return {
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        message: "Không thể generate vì movie/theater trong cấu hình không tồn tại trong DB",
+        invalidMovieIds,
+        invalidTheaterIds,
+        missingMovieIds,
+        missingTheaterIds,
+      };
+    }
+
+  const todayStartUTC = getVNDayStartUTC(new Date());
+  const yesterdayStartUTC = new Date(todayStartUTC.getTime() - 86400000);
+  const tomorrowStartUTC = new Date(todayStartUTC.getTime() + 86400000);
+
+  const yesterdaySlotTimes = timeSlots.map((s) => slotToStartTime(yesterdayStartUTC, s)).filter(Boolean);
+  const todaySlotTimes = timeSlots.map((s) => slotToStartTime(todayStartUTC, s)).filter(Boolean);
+
+  if (yesterdaySlotTimes.length === 0 || todaySlotTimes.length === 0) {
+    return { created: 0, updated: 0, skipped: 0, message: "timeSlots không hợp lệ" };
   }
-  return a;
-}
 
-export const generate = async (daysToGenerate = 7) => {
-  const config = await ScheduleConfig.findOne({ isActive: true });
-  if (!config) return { created: 0, updated: 0, message: "Không có cấu hình đang hoạt động" };
+  const [yesterdayShowtimes, todayShowtimes] = await Promise.all([
+    Showtime.find({
+      theater: { $in: theaters },
+      id_movie: { $in: movies },
+      startTime: { $in: yesterdaySlotTimes },
+      "seats.isBooked": { $ne: true },
+    }).select("_id theater startTime").lean(),
+    Showtime.find({
+      theater: { $in: theaters },
+      startTime: { $gte: todayStartUTC, $lt: tomorrowStartUTC },
+    }).select("_id theater startTime").lean(),
+  ]);
 
-  const nowVN = new Date(Date.now() + VN_OFFSET);
-  const todayVN = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()));
+  const yesterdayIndexByTime = new Map(
+    yesterdaySlotTimes.map((t, idx) => [t.toISOString(), idx])
+  );
 
-  let totalCreated = 0, totalUpdated = 0;
-  const processedDates = [];
+  const occupiedKey = new Set(
+    todayShowtimes.map((s) => `${s.theater.toString()}|${new Date(s.startTime).toISOString()}`)
+  );
 
-  // Tạo suất chiếu cho N ngày tiếp theo (mặc định 7 ngày)
-  for (let i = 0; i < daysToGenerate; i++) {
-    const targetVN = new Date(todayVN.getTime() + i * 86400000);
-    processedDates.push(targetVN.toISOString().split('T')[0]);
+  const updateOps = [];
+  for (const st of yesterdayShowtimes) {
+    const slotIndex = yesterdayIndexByTime.get(new Date(st.startTime).toISOString());
+    if (slotIndex === undefined) continue;
+    const newStartTime = todaySlotTimes[slotIndex];
+    const key = `${st.theater.toString()}|${newStartTime.toISOString()}`;
+    if (occupiedKey.has(key)) continue;
 
-    for (const theaterId of config.theaters) {
-      // Mỗi rạp, mỗi phim sẽ có danh sách slot được shuffle khác nhau để đa dạng
-      for (const movieId of config.movie_ids) {
-        const shuffledSlots = shuffle(config.timeSlots);
+    updateOps.push({
+      updateOne: {
+        filter: { _id: st._id },
+        update: { $set: { startTime: newStartTime, "seats.$[].isBooked": false } },
+      },
+    });
+    occupiedKey.add(key);
+  }
 
-        for (const slot of shuffledSlots) {
-          const [hour, minute] = slot.split(":").map(Number);
-          const startTime = new Date(targetVN.getTime() + (hour * 60 + minute) * 60000 - VN_OFFSET);
+  let updated = 0;
+  if (updateOps.length > 0) {
+    const r = await Showtime.bulkWrite(updateOps, { ordered: false });
+    updated = r.modifiedCount ?? 0;
+  }
 
-          const exists = await Showtime.findOne({ theater: theaterId, id_movie: movieId, startTime });
-          if (exists) { 
-            totalUpdated++; 
-            continue; 
-          }
+  const cinemaNames = [...new Set(theaterDocs.map((t) => t.cinemaName).filter(Boolean))];
+  const cinemaDocs = await Cinema.find({ cinemaName: { $in: cinemaNames } })
+    .select("_id cinemaName")
+    .lean();
+  const cinemaMap = Object.fromEntries(cinemaDocs.map((c) => [c.cinemaName, c._id]));
 
-          // Kiểm tra xem có suất chiếu nào của phim này tại rạp này trong quá khứ không để "tái sử dụng" hoặc tạo mới
-          // (Logic cũ của bạn là tái sử dụng suất chiếu cũ để tiết kiệm document, tôi giữ nguyên logic này)
-          const old = await Showtime.findOne({
-            theater: theaterId,
-            id_movie: movieId,
-            startTime: { $lt: startTime },
-            // Chỉ lấy suất chiếu cũ trong vòng 30 ngày và KHÔNG có ghế nào được đặt
-            "seats.isBooked": { $ne: true }
-          }).sort({ startTime: -1 });
+  const seatTypeIds = [
+    ...new Set(
+      theaterDocs
+        .flatMap((t) => (t.seats || []).map((s) => s.seatType?.toString()))
+        .filter(Boolean)
+    ),
+  ];
+  const seatTypes = await SeatType.find({ _id: { $in: seatTypeIds } })
+    .select("_id price color")
+    .lean();
+  const seatTypeMap = Object.fromEntries(seatTypes.map((st) => [st._id.toString(), st]));
 
-          if (old) {
-            old.startTime = startTime;
-            // Reset trạng thái ghế khi tái sử dụng
-            if (old.seats) {
-              old.seats.forEach(s => s.isBooked = false);
-            }
-            await old.save();
-            totalUpdated++;
-          } else {
-            try {
-              await createOneShowtime({ theaterId, movieId, startTime });
-              totalCreated++;
-            } catch (err) {
-              console.error(`[ScheduleGen] Lỗi tạo suất chiếu: ${err.message}`);
-            }
-          }
-        }
-      }
+  const seatsTemplateByTheater = Object.fromEntries(
+    theaterDocs.map((t) => {
+      const seats = (t.seats || []).map((s) => {
+        const st = seatTypeMap[s.seatType?.toString()];
+        return {
+          seatNumber: s.seatNumber,
+          seatType: s.seatType,
+          price: st?.price ?? 0,
+          color: st?.color ?? "#cccccc",
+          isBooked: false,
+        };
+      });
+      return [t._id.toString(), seats];
+    })
+  );
+
+  const newShowtimes = [];
+  let skippedNoCinema = 0;
+  let skippedNoSeats = 0;
+  for (let ti = 0; ti < theaters.length; ti++) {
+    const theaterId = theaters[ti];
+    const theaterDoc = theaterDocs.find((t) => t._id.toString() === theaterId);
+    if (!theaterDoc) continue;
+    const cinemaId = cinemaMap[theaterDoc.cinemaName];
+    if (!cinemaId) { skippedNoCinema++; continue; }
+    if (!Array.isArray(theaterDoc.seats) || theaterDoc.seats.length === 0) { skippedNoSeats++; continue; }
+
+    for (let slotIndex = 0; slotIndex < todaySlotTimes.length; slotIndex++) {
+      const startTime = todaySlotTimes[slotIndex];
+      const key = `${theaterId}|${startTime.toISOString()}`;
+      if (occupiedKey.has(key)) continue;
+
+      const movieId = movies[(slotIndex + ti) % movies.length];
+      if (!movieId) continue;
+      newShowtimes.push({
+        id_movie: movieId,
+        theater: theaterId,
+        cinema: cinemaId,
+        startTime,
+        seats: seatsTemplateByTheater[theaterId] || [],
+      });
+      occupiedKey.add(key);
     }
   }
 
-  return { 
-    created: totalCreated, 
-    updated: totalUpdated, 
-    message: `Đã duy trì suất chiếu cho ${daysToGenerate} ngày tới.`,
-    dates: processedDates 
+  let created = 0;
+  if (newShowtimes.length > 0) {
+    const inserted = await Showtime.insertMany(newShowtimes, { ordered: false });
+    created = inserted.length;
+  }
+
+  const expected = theaters.length * todaySlotTimes.length;
+  const skipped = Math.max(0, expected - (created + updated));
+
+  return {
+    created,
+    updated,
+    skipped,
+    message: `Đã tạo ${created} và cập nhật ${updated} suất chiếu.`,
+    date: todayStartUTC.toISOString(),
+    invalidMovieIds,
+    invalidTheaterIds,
+    missingMovieIds,
+    missingTheaterIds,
+    skippedNoCinema,
+    skippedNoSeats,
   };
+  } catch (err) {
+    return {
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      message: `Generate thất bại: ${err.message}`,
+    };
+  }
 };
