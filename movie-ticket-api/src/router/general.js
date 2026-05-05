@@ -9,43 +9,48 @@ import SeatType from "../model/seatTypeModel.js";
 
 const generalRouter = express.Router();
 
+// Helper để thêm cache header: 5 phút cache, 30 giây revalidate ngầm
+const addCacheHeader = (res) => {
+  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=30');
+};
+
 generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
   const now = new Date();
-  const showtimes = await Showtime.find({ startTime: { $gte: now } }).populate("id_movie").lean();
+  const showtimes = await Showtime.find({ startTime: { $gte: now } })
+    .populate({
+      path: "id_movie",
+      select: "title banner duration genre releaseDate" // Chỉ lấy các trường cần thiết
+    })
+    .lean();
+  
   const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
   return sendSuccess(res, "Now showing movies retrieved successfully", movies);
 }));
 
 generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
   const now = new Date();
-  const showtimes = await Showtime.find({ startTime: { $gt: now } }).populate("id_movie").lean();
+  const showtimes = await Showtime.find({ startTime: { $gt: now } })
+    .populate({
+      path: "id_movie",
+      select: "title banner duration genre releaseDate"
+    })
+    .lean();
+
   const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
-  const formattedMovies = movies.map((m) => ({
-    _id: m._id,
-    title: m.title,
-    banner: m.banner,
-    duration: m.duration,
-    genre: m.genre,
-    releaseDate: m.releaseDate,
-  }));
-  return sendSuccess(res, "Coming soon movies retrieved successfully", formattedMovies);
+  return sendSuccess(res, "Coming soon movies retrieved successfully", movies);
 }));
 
 generalRouter.get("/showBanners", asyncHandler(async (req, res) => {
-  // Lấy 5 phim mới nhất để làm banner
+  addCacheHeader(res);
   const movies = await Movie.find()
     .sort({ createdAt: -1 })
     .limit(5)
     .select("title banner")
     .lean();
 
-  const banners = movies.map(m => ({
-    _id: m._id,
-    title: m.title,
-    banner: m.banner
-  }));
-
-  return sendSuccess(res, "Banners retrieved successfully", banners);
+  return sendSuccess(res, "Banners retrieved successfully", movies);
 }));
 
 generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
@@ -59,6 +64,7 @@ generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   if (id === "all") {
+    addCacheHeader(res);
     const { title } = req.query;
     const query = title ? { title: { $regex: title, $options: "i" } } : {};
     const movies = await Movie.find(query).sort({ releaseDate: -1 }).lean();
@@ -78,11 +84,13 @@ generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
 }));
 
 generalRouter.get("/cinema", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
   const cinemas = await Cinema.find().lean();
   return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
 }));
 
 generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
   const { location } = req.query;
 
   let query = {};
@@ -90,24 +98,20 @@ generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
     query.address = { $regex: location, $options: "i" };
   }
 
-  const cinemas = await Cinema.find(query).lean();
+  const cinemas = await Cinema.find(query)
+    .select("branch cinemaName address coordinates")
+    .lean();
 
-  const formattedCinemas = cinemas.map(c => ({
-    branch: c.branch,
-    cinemaName: c.cinemaName,
-    address: c.address,
-    coordinates: c.coordinates
-  }));
-
-  return sendSuccess(res, "Cinema branches retrieved successfully", formattedCinemas);
+  return sendSuccess(res, "Cinema branches retrieved successfully", cinemas);
 }));
 
 generalRouter.get("/locations", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
   const cinemas = await Cinema.find().select("address").lean();
 
   const locationMap = {};
 
-  cinemas.forEach((c, index) => {
+  cinemas.forEach((c) => {
     const parts = c.address.split(",").map(p => p.trim());
     if (parts.length >= 2) {
       const city = parts[parts.length - 1];
@@ -133,6 +137,7 @@ generalRouter.get("/locations", asyncHandler(async (req, res) => {
 }));
 
 generalRouter.get("/theaterByCinema", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
   const theaters = await Cinema.find().populate("theaters").lean();
   return sendSuccess(res, "All theaters retrieved successfully", theaters);
 }));
@@ -145,6 +150,7 @@ generalRouter.get("/theaters/:id", asyncHandler(async (req, res) => {
 }));
 
 generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
+  // Không cache API này vì dữ liệu showtime thay đổi liên tục và phụ thuộc query params phức tạp
   const { branch, date, idMovie } = req.query;
 
   let conditions = [];
@@ -154,7 +160,6 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   }
 
   if (branch) {
-    // Theater lưu cinemaName và branch dạng string → filter trực tiếp qua theater
     const theaterIds = await Theater.find({
       $or: [{ branch: branch }, { cinemaName: branch }]
     }).distinct("_id");
@@ -177,16 +182,11 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
     .select("_id startTime theater")
     .lean();
 
-  const result = showtimes.map(st => ({
-    _id: st._id,
-    startTime: st.startTime,
-    theater: st.theater,
-  }));
-
-  return sendSuccess(res, "Filtered showtimes retrieved successfully", result);
+  return sendSuccess(res, "Filtered showtimes retrieved successfully", showtimes);
 }));
 
 generalRouter.get("/seatTypes", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
   const seatTypes = await SeatType.find().lean();
   return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
 }));

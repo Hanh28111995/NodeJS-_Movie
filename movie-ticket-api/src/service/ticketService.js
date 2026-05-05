@@ -81,7 +81,10 @@ export const getUserTickets = async (userIdentifier, options = {}) => {
     query.user_id = userIdentifier;
   }
 
-  let ticketQuery = InforTicket.find(query).sort({ createdAt: -1 });
+  // Tối ưu: Chỉ lấy các trường cần thiết cho danh sách vé
+  let ticketQuery = InforTicket.find(query)
+    .select("startTime seatName paymentStatus paymentMethod transactionId id_movie id_theater user_id createdAt")
+    .sort({ createdAt: -1 });
 
   if (populateUser) {
     ticketQuery = ticketQuery.populate("user_id", "username email userphone");

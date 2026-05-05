@@ -28,7 +28,7 @@ export const searchTicketByStaff = asyncHandler(async (req, res) => {
   }
 
   // 2. Tìm toàn bộ vé của User đó
-  const tickets = await InforTicket.find({ user_id: user._id.toString() });
+  const tickets = await InforTicket.find({ user_id: user._id.toString() }).lean();
 
   return sendSuccess(res, "Tìm thấy danh sách vé thành công", {
     user: {
@@ -44,7 +44,7 @@ export const searchTicketByStaff = asyncHandler(async (req, res) => {
  * @desc Lấy toàn bộ danh sách vé (Dành cho nhân viên quản lý)
  */
 export const getAllTicketsByStaff = asyncHandler(async (req, res) => {
-  const tickets = await InforTicket.find().sort({ createdAt: -1 });
+  const tickets = await InforTicket.find().sort({ createdAt: -1 }).lean();
   return sendSuccess(res, "Lấy toàn bộ danh sách vé thành công", tickets);
 });
 

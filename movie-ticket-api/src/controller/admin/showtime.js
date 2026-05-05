@@ -25,7 +25,7 @@ export const getAllShowtimes = asyncHandler(async (req, res) => {
   const [showtimes, total] = await Promise.all([
     Showtime.find()
       .populate("cinema")
-      .populate("theater")
+      .populate("theater", "-seats") // Tối ưu: Không lấy danh sách ghế khi list showtime
       .sort({ startTime: -1 })
       .skip(skip)
       .limit(limit)
@@ -96,9 +96,20 @@ export const getUpcomingShowtimes = asyncHandler(async (req, res) => {
   const now = new Date();
   const showtimes = await Showtime.find({ startTime: { $gt: now } })
     .select("_id startTime theater id_movie")
+    .populate("theater", "theaterName branch") // Chỉ lấy tên rạp và chi nhánh
     .sort({ startTime: 1 })
     .lean();
-  return sendSuccess(res, "Upcoming showtimes retrieved successfully", { showtimes });
+
+  const movieIds = [...new Set(showtimes.map((st) => st.id_movie?.toString()).filter(Boolean))];
+  const movies = await Movie.find({ _id: { $in: movieIds } }).select("_id title banner").lean();
+  const movieMap = Object.fromEntries(movies.map((m) => [m._id.toString(), m]));
+
+  const result = showtimes.map((st) => ({
+    ...st,
+    id_movie: movieMap[st.id_movie?.toString()] || st.id_movie,
+  }));
+
+  return sendSuccess(res, "Upcoming showtimes retrieved successfully", result);
 });
 
 // GET TODAY - lịch chiếu trong ngày hôm nay theo giờ VN (UTC+7)
