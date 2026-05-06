@@ -28,12 +28,6 @@ export const updateConfig = async ({ movie_ids, timeSlots, theaters, scheduleTim
   return config;
 };
 
-const parseSlot = (slot) => {
-  const [hour, minute] = String(slot).split(":").map(Number);
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
-  return { hour, minute };
-};
 
 const getVNDayStartUTC = (date) => {
   const vn = new Date(date.getTime() + VN_OFFSET);
@@ -43,10 +37,10 @@ const getVNDayStartUTC = (date) => {
   return new Date(Date.UTC(y, m, d) - VN_OFFSET);
 };
 
-const slotToStartTime = (vnDayStartUTC, slot) => {
-  const parsed = parseSlot(slot);
-  if (!parsed) return null;
-  return new Date(vnDayStartUTC.getTime() + (parsed.hour * 60 + parsed.minute) * 60000);
+const slotToStartTime = (date, slot) => {
+  if (!date || !slot) return null;  
+  const datePart = dayjs(date).format("YYYY-MM-DD");  
+  return `${datePart}T${slot}:00.000Z`;
 };
 
 export const generate = async () => {
