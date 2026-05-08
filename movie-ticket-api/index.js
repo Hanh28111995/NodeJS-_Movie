@@ -35,29 +35,43 @@ Create Express server
  */
 const SESSION_AGE = 1000 * 60 * 60 * 2;
 const app = express();
-const allowedOrigins = [process.env.FRONTEND_URL];
-
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-  }),
-);
+
+const allowedOrigins = ["https://moviebooking-ht.vercel.app", "http://localhost:5173", "http://localhost:3000"];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS: Origin không hợp lệ"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-vercel-cron"]
+}));
 app.options("*", cors());
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Áp dụng dbMiddleware cho tất cả các route API
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-vercel-cron");  
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use("/api", dbMiddleware);
 
-/*
-Link to router
- */
 app.use("/api/uploads", verifyToken, uploadRouter);
 
 app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
