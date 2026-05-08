@@ -27,7 +27,7 @@ const allowedOrigins = [
   "http://localhost:5173", 
   "http://localhost:3000"
 ];
-
+app.use(cookieParser());
 app.use(cors({
   origin: (origin, callback) => {
     // Cho phép các request không có origin (như Postman) hoặc nằm trong danh sách
@@ -46,7 +46,6 @@ app.use(cors({
 app.options("*", cors());
 
 // --- 2. CÁC MIDDLEWARE CƠ BẢN ---
-app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
