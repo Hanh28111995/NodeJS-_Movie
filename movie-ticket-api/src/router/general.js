@@ -17,17 +17,14 @@ const addCacheHeader = (res) => {
 generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const now = new Date();
-  
-  // Lấy danh sách ID phim có suất chiếu từ nay về sau
-  const movieIdsWithShowtimes = await Showtime.distinct("id_movie", { 
-    startTime: { $gte: now } 
-  });
-
-  // Truy vấn trực tiếp bảng Movie
-  const movies = await Movie.find({ _id: { $in: movieIdsWithShowtimes } })
-    .select("title banner duration genre releaseDate")
+  const showtimes = await Showtime.find({ startTime: { $gte: now } })
+    .populate({
+      path: "id_movie",
+      select: "title banner duration genre releaseDate" // Chỉ lấy các trường cần thiết
+    })
     .lean();
-
+  
+  const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
   return sendSuccess(res, "Now showing movies retrieved successfully", movies);
 }));
 
@@ -65,11 +62,21 @@ generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
 
 generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
   const { id } = req.params;
-  
-  // Dùng toán tử ba ngôi để xác định điều kiện tìm kiếm
-  const isObjectId = id.match(/^[a-f\d]{24}$/i);
+
+  if (id === "all") {
+    addCacheHeader(res);
+    const { title } = req.query;
+    const query = title ? { title: { $regex: title, $options: "i" } } : {};
+    const movies = await Movie.find(query).sort({ releaseDate: -1 }).lean();
+    return sendSuccess(res, "All movies retrieved successfully", movies);
+  }
+
+  // Tìm theo id_movie (nanoid) hoặc _id (ObjectId)
   const movie = await Movie.findOne({
-    $or: [{ id_movie: id }, ...(isObjectId ? [{ _id: id }] : [])]
+    $or: [
+      { id_movie: id },
+      ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : [])
+    ]
   }).lean();
 
   if (!movie) return sendError(res, "Movie not found", 404);
@@ -100,30 +107,33 @@ generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
 
 generalRouter.get("/locations", asyncHandler(async (req, res) => {
   addCacheHeader(res);
-  
-  // Dùng Aggregation để gom nhóm tỉnh/thành phố ngay tại DB
-  const locations = await Cinema.aggregate([
-    {
-      $project: {
-        addressParts: { $split: ["$address", ", "] }
-      }
-    },
-    {
-      $project: {
-        city: { $arrayElemAt: ["$addressParts", -1] },
-        district: { $arrayElemAt: ["$addressParts", -2] }
-      }
-    },
-    {
-      $group: {
-        _id: "$city",
-        vungMien: { $first: "$city" },
-        cumRap: { $addToSet: "$district" }
-      }
-    }
-  ]);
+  const cinemas = await Cinema.find().select("address").lean();
 
-  return sendSuccess(res, "Locations retrieved successfully", locations);
+  const locationMap = {};
+
+  cinemas.forEach((c) => {
+    const parts = c.address.split(",").map(p => p.trim());
+    if (parts.length >= 2) {
+      const city = parts[parts.length - 1];
+      const district = parts[parts.length - 2];
+
+      if (!locationMap[city]) {
+        locationMap[city] = {
+          _id: city,
+          vungMien: city,
+          cumRap: new Set()
+        };
+      }
+      locationMap[city].cumRap.add(district);
+    }
+  });
+
+  const formattedLocations = Object.values(locationMap).map(item => ({
+    ...item,
+    cumRap: Array.from(item.cumRap)
+  }));
+
+  return sendSuccess(res, "Locations retrieved successfully", formattedLocations);
 }));
 
 generalRouter.get("/theaterByCinema", asyncHandler(async (req, res) => {
