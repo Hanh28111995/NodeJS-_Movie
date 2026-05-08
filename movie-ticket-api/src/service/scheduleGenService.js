@@ -5,6 +5,7 @@ import Cinema from "../model/cinemaModel.js";
 import SeatType from "../model/seatTypeModel.js";
 import Movie from "../model/movieModel.js";
 import mongoose from "mongoose";
+import dayjs from "dayjs";
 
 const VN_OFFSET = 7 * 60 * 60 * 1000;
 
