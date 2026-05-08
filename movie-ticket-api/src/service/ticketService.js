@@ -98,13 +98,13 @@ export const getTicketsByUserIds = async (userIds) => {
   return await getUserTickets(userIds, { populateUser: true });
 };
 
-export const confirmTicketPayment = async (ticketId) => {
+export const confirmTicketPayment = async (ticketId, status) => {
   const ticket = await InforTicket.findById(ticketId);
   if (!ticket) throw new Error("Ticket not found");
   
   await InforTicket.updateOne(
     { _id: ticketId },
-    { $set: { paymentStatus: "Completed" } }
+    { $set: { paymentStatus: status } }
   );
 
   // Lấy lại ticket sau khi update để trả về

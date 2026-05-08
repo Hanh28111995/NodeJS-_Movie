@@ -62,7 +62,7 @@ export const PaymentService = {
     confirm: async (res, ticketData) => {
       const ticketId = ticketData.id || ticketData._id;
       if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
-      const ticket = await ticketRepository.confirmTicketPayment(ticketId);
+      const ticket = await ticketRepository.confirmTicketPayment(ticketId, ticketData.paymentStatus || "Completed");
       if (!ticket) return sendError(res, "Không tìm thấy vé", 404);
       return sendSuccess(res, "Thanh toán tiền mặt thành công", ticket);
     },
