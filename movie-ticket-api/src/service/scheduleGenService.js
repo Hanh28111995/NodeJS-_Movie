@@ -59,8 +59,8 @@ export const updateConfig = async ({
   return config;
 };
 
-const getVNDayStartUTC = (date) => {
-  return dayjs(date).tz(VN_TZ).startOf("day");
+const getVNDayStart = (date) => {
+  return dayjs(date).startOf("day");
 };
 
 const slotToStartTime = (baseDayjs, slot) => {
@@ -156,7 +156,7 @@ export const generate = async () => {
       };
     }
 
-    const todayStart = getVNDayStartUTC(new Date());
+    const todayStart = getVNDayStart(new Date());
     const yesterdayStart = todayStart.subtract(1, "day");
     const tomorrowStart = todayStart.add(1, "day");
 
