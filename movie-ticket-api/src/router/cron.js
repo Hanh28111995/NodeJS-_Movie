@@ -4,6 +4,9 @@ import * as scheduleGenService from "../service/scheduleGenService.js";
 import { sendSuccess } from "../helper/client.js";
 import asyncHandler from "../util/asyncHandler.js";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const cronRouter = express.Router();
 
 // Middleware kiểm tra CRON_SECRET dùng chung
