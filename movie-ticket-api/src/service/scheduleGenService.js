@@ -158,6 +158,7 @@ export const generate = async () => {
 
     const todayStart = getVNDayStartUTC(new Date());
     const yesterdayStart = todayStart.subtract(1, "day");
+    const tomorrowStart = todayStart.add(1, "day");
 
     const yesterdaySlotTimes = timeSlots.map((s) =>
       slotToStartTime(yesterdayStart, s),
@@ -184,7 +185,7 @@ export const generate = async () => {
         .lean(),
       Showtime.find({
         theater: { $in: theaters },
-        startTime: { $gte: todayStartUTC, $lt: tomorrowStartUTC },
+        startTime: { $gte: todayStart, $lt: tomorrowStart },
       })
         .select("_id theater startTime")
         .lean(),
@@ -320,7 +321,7 @@ export const generate = async () => {
       updated,
       skipped,
       message: `Đã tạo ${created} và cập nhật ${updated} suất chiếu.`,
-      date: todayStartUTC.toISOString(),
+      date: todayStart.toISOString(),
       invalidMovieIds,
       invalidTheaterIds,
       missingMovieIds,
