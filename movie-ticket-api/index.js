@@ -10,16 +10,14 @@ import paymentRouter from "./src/router/payment.js";
 import cronRouter from "./src/router/cron.js";
 import staffRouter from "./src/router/staff/index.js";
 
-
 import {
   verifyAdmin,
   verifyCustomer,
   verifyToken,
-  verifyStaff 
+  verifyStaff,
 } from "./src/middleware/index.js";
 import uploadRouter from "./src/router/uploads/uploads.js";
 import generalRouter from "./src/router/general.js";
-
 
 import dbMiddleware from "./src/middleware/db.js";
 import errorHandler from "./src/middleware/error.js";
@@ -37,13 +35,23 @@ Create Express server
  */
 const SESSION_AGE = 1000 * 60 * 60 * 2;
 const app = express();
+const allowedOrigins = [process.env.FRONTEND_URL];
 
 app.use(cookieParser());
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL || "http://localhost:3000"],
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS: Domain không được phép truy cập!"));
+      }
+    },
     credentials: true,
-  })
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-vercel-cron"],
+  }),
 );
 
 app.use(express.urlencoded({ extended: true }));
