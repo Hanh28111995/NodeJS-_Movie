@@ -159,3 +159,15 @@ export const cancelTicket = async (ticketId) => {
 
   return await InforTicket.findById(ticketId).lean();
 };
+
+export const getTicketById = async (ticketId) => {
+  const ticket = await InforTicket.findById(ticketId)
+    .populate("user_id", "username email userphone")
+    .lean();
+
+  if (!ticket) {
+    return sendError( ticket,"Vé không tồn tại", 401);
+  }
+
+  return ticket;
+};
