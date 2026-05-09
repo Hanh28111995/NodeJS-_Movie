@@ -17,9 +17,8 @@ const notificationSchema = new mongoose.Schema(
       default: false,
     },
     ticketStatus: {
-      type: String,
-      enum: ["pending", "confirmed", "cancelled"],
-      default: "pending",
+      type: String,      
+      default: "Pending",
     },
     note: {
       type: String,
