@@ -6,7 +6,7 @@ const getNotificationMessage = (ticketStatus) => {
   const messages = {
     Pending: "Bạn đã đặt vé thành công",
     Completed: "Thanh toán thành công",
-    Cancelled: "Bạn đã hủy vé",    
+    Failed: "Bạn đã hủy vé",    
   };
   return messages[ticketStatus] || "Vé được cập nhật";
 };
@@ -150,9 +150,9 @@ export const cancelTicket = async (ticketId) => {
   await Notification.findOneAndUpdate(
     { id_ticket: ticketId },
     {
-      ticketStatus: "cancelled",
+      ticketStatus: "Failed",
       status: false,
-      note: getNotificationMessage("cancelled"),
+      note: getNotificationMessage("Failed"),
     },
     { upsert: true }
   );
