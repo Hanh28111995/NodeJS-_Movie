@@ -5,92 +5,36 @@ import asyncHandler from "../../util/asyncHandler.js";
 import bcrypt from "bcryptjs";
 import * as ticketService from "../../service/ticketService.js";
 
-/**
- * @desc Nhân viên tìm kiếm vé theo Username hoặc Email khách hàng
- */
-export const searchTicketByStaff = asyncHandler(async (req, res) => {
-  const { q } = req.query;
-
-  if (!q) {
-    return sendError(res, "Vui lòng cung cấp từ khóa tìm kiếm", 400);
-  }
-
-  // 1. Tìm User theo username hoặc email
-  const user = await User.findOne({
-    $or: [
-      { username: { $regex: q, $options: "i" } },
-      { email: { $regex: q, $options: "i" } }
-    ]
-  });
-
-  if (!user) {
-    return sendError(res, "Không tìm thấy người dùng", 404);
-  }
-
-  // 2. Tìm toàn bộ vé của User đó
-  const tickets = await InforTicket.find({ user_id: user._id.toString() }).lean();
-
-  return sendSuccess(res, "Tìm thấy danh sách vé thành công", {
-    user: {
-      username: user.username,
-      email: user.email,
-      avatar: user.avatar
-    },
-    tickets
-  });
-});
-
-/**
- * @desc Lấy toàn bộ danh sách vé (Dành cho nhân viên quản lý)
- */
+// Lấy tất cả vé (Staff view)
 export const getAllTicketsByStaff = asyncHandler(async (req, res) => {
-  const tickets = await InforTicket.find().sort({ createdAt: -1 }).lean();
-  return sendSuccess(res, "Lấy toàn bộ danh sách vé thành công", tickets);
+  const { page, limit, status } = req.query;
+  const data = await ticketService.getAllTickets({ page, limit, paymentStatus: status });
+  return sendSuccess(res, "Lấy danh sách vé thành công", data);
 });
 
-/**
- * @desc Staff tạo tài khoản customer tại quầy
- */
+// Tìm kiếm vé
+export const searchTicketByStaff = asyncHandler(async (req, res) => {
+  const tickets = await ticketService.searchTickets(req.query);
+  return sendSuccess(res, "Kết quả tìm kiếm", tickets);
+});
+
+// Tạo khách hàng mới nhanh
 export const createCustomerByStaff = asyncHandler(async (req, res) => {
-  const { username, email, password, userphone } = req.body;
-
-  if (!username || !email) return sendError(res, "username và email là bắt buộc", 400);
-
-  const existing = await User.findOne({ $or: [{ username }, { email }] });
-  if (existing) return sendError(res, "Username hoặc Email đã tồn tại", 400);
-
-  const hashedPassword = await bcrypt.hash(password || "123456", 10);
-  const newUser = await User.create({
-    username,
-    email,
-    userphone: userphone || "",
-    password: hashedPassword,
-    role: "customer",
-  });
-
-  return sendSuccess(res, "Tạo tài khoản khách hàng thành công", {
-    _id: newUser._id,
-    username: newUser.username,
-    email: newUser.email,
-    userphone: newUser.userphone,
-  });
+  const customer = await ticketService.createQuickCustomer(req.body);
+  return sendSuccess(res, "Tạo khách hàng thành công", customer);
 });
 
-/**
- * @desc Staff book vé cho customer (dùng chung ticketService với customer)
- * Khác customer ở chỗ: user_id lấy từ body thay vì req.user.id
- */
+// Staff đặt vé hộ khách
 export const bookForCustomer = asyncHandler(async (req, res) => {
-  const { user_id, ...ticketData } = req.body;
-  if (!user_id) return sendError(res, "user_id là bắt buộc", 400);
+  // Logic này dùng chung createTicket nhưng có thể thêm note: "Staff booked"
+  const ticketData = { ...req.body, bookingSource: "Staff" };
+  const ticket = await ticketService.createTicket(ticketData);
+  return sendSuccess(res, "Đặt vé thành công", ticket);
+});
 
-  const user = await User.findById(user_id).lean();
-  if (!user) return sendError(res, "Không tìm thấy khách hàng", 404);
-
-  try {
-    const newTicket = await ticketService.createTicket({ ...ticketData, user_id });
-    return sendSuccess(res, "Đặt vé cho khách hàng thành công", newTicket);
-  } catch (err) {
-    return sendError(res, err.message, 409);
-  }
+// Staff hủy vé cho khách
+export const cancelTicket = asyncHandler(async (req, res) => {
+  const { ticketId } = req.body; // Hoặc req.params tùy validateBody
+  const result = await ticketService.cancelTicket(ticketId);
+  return sendSuccess(res, "Hủy vé thành công", result);
 });

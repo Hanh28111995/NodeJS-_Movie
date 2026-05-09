@@ -23,6 +23,12 @@ export const addTicket = asyncHandler(async (req, res) => {
   return sendSuccess(res, "Ticket created successfully", newTicket);
 });
 
+export const updateTicket = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const updatedTicket = await ticketService.updateTicket(id, req.body);
+  return sendSuccess(res, "Cập nhật phòng chiếu thành công", updatedTheater);
+});
+
 export const deleteTicket = asyncHandler(async (req, res) => {
   const { id } = req.params;
   await ticketService.deleteTicket(id);
