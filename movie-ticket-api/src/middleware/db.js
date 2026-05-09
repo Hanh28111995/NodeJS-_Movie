@@ -2,10 +2,6 @@ import mongoose from "mongoose";
 
 const MONGO_URI = process.env.MONGO_DB;
 
-if (!MONGO_URI) {
-  throw new Error("Missing MONGO_DB");
-}
-
 let cached = global.mongoose;
 
 if (!cached) {
@@ -15,7 +11,7 @@ if (!cached) {
   };
 }
 
-async function connect() {
+const connect = async () => {
   if (cached.conn) {
     return cached.conn;
   }
@@ -29,12 +25,13 @@ async function connect() {
   cached.conn = await cached.promise;
 
   return cached.conn;
-}
+};
 
 const dbMiddleware = async (req, res, next) => {
   try {
     await connect();
-    return next();
+
+    next(); // KHÔNG return
   } catch (error) {
     console.error(error);
 
