@@ -15,7 +15,6 @@ const adminRouter = express.Router();
 
 adminRouter.use("/movie", adminMoviesRouter);
 adminRouter.use("/ticket", adminTicketRouter);
-adminRouter.use("/ticket-staff", staffTicketRouter);
 adminRouter.use("/user", adminUserRouter);
 adminRouter.use("/showtime", adminShowTimeRouter);
 adminRouter.use("/branch", adminCinemaRouter);

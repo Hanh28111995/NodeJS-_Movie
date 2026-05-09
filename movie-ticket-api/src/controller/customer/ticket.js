@@ -19,11 +19,11 @@ export const bookMytickets = asyncHandler(async (req, res) => {
   }
 });
 
-export const confirmMytickets = asyncHandler(async (req, res) => {
-  const { ticketId } = req.body;
-  const ticket = await ticketService.confirmTicketPayment(ticketId);
-  return sendSuccess(res, "Ticket confirmed successfully", ticket);
-});
+// export const confirmMytickets = asyncHandler(async (req, res) => {
+//   const { ticketId } = req.body;
+//   const ticket = await ticketService.confirmTicket(ticketId);
+//   return sendSuccess(res, "Ticket confirmed successfully", ticket);
+// });
 
 export const cancelMytickets = asyncHandler(async (req, res) => {
   const { ticketId } = req.body;

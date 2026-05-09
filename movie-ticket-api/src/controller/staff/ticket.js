@@ -38,3 +38,9 @@ export const cancelTicket = asyncHandler(async (req, res) => {
   const result = await ticketService.cancelTicket(ticketId);
   return sendSuccess(res, "Hủy vé thành công", result);
 });
+
+export const confirmTicket = asyncHandler(async (req, res) => {
+  const { ticketId } = req.body;
+  const ticket = await ticketService.confirmTicket(ticketId);
+  return sendSuccess(res, "Ticket confirmed successfully", ticket);
+});
