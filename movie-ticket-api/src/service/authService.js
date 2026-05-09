@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import User from "../model/userModel.js";
 import { auth as firebaseAuth } from "../middleware/firebase.js";
 import { TOKEN_BLACKLIST } from "../../index.js";
+import { sendError } from "../helper/client.js";
 
 const generateToken = (payload, secret, expiresIn) => {
   return jwt.sign(payload, secret, { expiresIn });
@@ -10,10 +11,10 @@ const generateToken = (payload, secret, expiresIn) => {
 
 export const login = async (username, password) => {
   const user = await User.findOne({ username });
-  if (!user) throw new Error("Username does not exist");
+  if (!user) return sendError(user, "Username does not exist", 401);
 
   const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) throw new Error("Incorrect password");
+  if (!isMatch) return sendError(null, "Incorrect password", 401);
 
   const payload = {
     id: user._id,
@@ -21,15 +22,11 @@ export const login = async (username, password) => {
     role: user.role,
   };
 
-  const accessToken = generateToken(
-    payload,
-    process.env.JWT_SECRET_KEY,
-    "10m"
-  );
+  const accessToken = generateToken(payload, process.env.JWT_SECRET_KEY, "10m");
   const refreshToken = generateToken(
     payload,
     process.env.JWT_REFRESH_SECRET_KEY,
-    "7d"
+    "7d",
   );
 
   user.refreshToken = refreshToken;
@@ -89,7 +86,7 @@ export const refreshToken = async (token) => {
   const newAccessToken = jwt.sign(
     { id: decoded.id, username: decoded.username, role: decoded.role },
     process.env.JWT_SECRET_KEY,
-    { expiresIn: "10m" }
+    { expiresIn: "10m" },
   );
   return newAccessToken;
 };
@@ -104,7 +101,9 @@ export const googleLogin = async (idToken) => {
   }
 
   if (!firebaseAuth) {
-    throw new Error("Firebase Admin SDK chưa được cấu hình đúng. Vui lòng kiểm tra biến môi trường FIREBASE_SDK.");
+    throw new Error(
+      "Firebase Admin SDK chưa được cấu hình đúng. Vui lòng kiểm tra biến môi trường FIREBASE_SDK.",
+    );
   }
 
   try {
@@ -116,7 +115,9 @@ export const googleLogin = async (idToken) => {
 
     if (!user) {
       user = new User({
-        username: name || (email ? email.split("@")[0] : "user") + "_" + uid.substring(0, 5),
+        username:
+          name ||
+          (email ? email.split("@")[0] : "user") + "_" + uid.substring(0, 5),
         email,
         avatar: picture,
         provider: "google",
@@ -138,12 +139,12 @@ export const googleLogin = async (idToken) => {
     const accessToken = generateToken(
       payload,
       process.env.JWT_SECRET_KEY,
-      "10m"
+      "10m",
     );
     const refreshToken = generateToken(
       payload,
       process.env.JWT_REFRESH_SECRET_KEY,
-      "7d"
+      "7d",
     );
 
     user.refreshToken = refreshToken;
