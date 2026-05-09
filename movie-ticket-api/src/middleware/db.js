@@ -1,33 +1,48 @@
 import mongoose from "mongoose";
 
-// Biến này nằm ngoài hàm để nó được lưu lại trong RAM của Vercel (Warm Start)
-let isConnected = false;
+const MONGO_URI = process.env.MONGO_DB;
 
-const connect = async () => {
-    if (isConnected) {
-        // Nếu đã kết nối rồi thì return ngay, không đợi thêm 1ms nào nữa
-        return;
-    }
+if (!MONGO_URI) {
+  throw new Error("Missing MONGO_DB");
+}
 
-    try {
-        const db = await mongoose.connect(process.env.MONGO_DB, {            
-            bufferCommands: false, 
-        });
-        isConnected = db.connections[0].readyState;
-        console.log("=> Đã thiết lập kết nối MongoDB mới");
-    } catch (error) {
-        console.error("=> Lỗi kết nối MongoDB:", error);
-        throw error;
-    }
-};
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = {
+    conn: null,
+    promise: null,
+  };
+}
+
+async function connect() {
+  if (cached.conn) {
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGO_URI, {
+      bufferCommands: false,
+    });
+  }
+
+  cached.conn = await cached.promise;
+
+  return cached.conn;
+}
 
 const dbMiddleware = async (req, res, next) => {
-    try {
-        await connect();
-        next();
-    } catch (error) {        
-        res.status(500).json({ message: "Database connection failed", error: error.message });
-    }
+  try {
+    await connect();
+    return next();
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Database connection failed",
+      error: error.message,
+    });
+  }
 };
 
 export default dbMiddleware;

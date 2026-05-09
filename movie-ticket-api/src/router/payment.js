@@ -11,7 +11,7 @@ import {
 const paymentRouter = express.Router();
 
 // Cash Payment
-// paymentRouter.post("/cash", cashConfirmPayment);
+paymentRouter.post("/cash", cashConfirmPayment);
 
 // Payment Status Check
 paymentRouter.get("/status/:id", checkTicketPaymentStatus);
