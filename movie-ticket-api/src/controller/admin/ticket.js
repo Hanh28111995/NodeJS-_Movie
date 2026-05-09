@@ -36,7 +36,7 @@ export const deleteTicket = asyncHandler(async (req, res) => {
 });
 
 export const cancelTicket = asyncHandler(async (req, res) => {
-  const { ticketId } = req.body;
+  const ticketId = req.body_id;
   const result = await ticketService.cancelTicket(ticketId);
   return sendSuccess(res, "Hủy vé thành công", result);
 });

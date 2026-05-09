@@ -21,7 +21,7 @@ export const bookMytickets = asyncHandler(async (req, res) => {
 
 
 export const cancelMytickets = asyncHandler(async (req, res) => {
-  const { ticketId } = req.body;
+  const  ticketId  = req.body._id;
   const ticket = await ticketService.cancelTicket(ticketId);
   return sendSuccess(res, "Ticket cancelled successfully", ticket);
 });

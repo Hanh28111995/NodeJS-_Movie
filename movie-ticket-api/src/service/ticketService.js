@@ -4,9 +4,9 @@ import Notification from "../model/userCartNotificationModel.js";
 
 const getNotificationMessage = (ticketStatus) => {
   const messages = {
-    pending: "Bạn đã đặt vé thành công",
-    completed: "Thanh toán thành công",
-    cancelled: "Bạn đã hủy vé",    
+    Pending: "Bạn đã đặt vé thành công",
+    Completed: "Thanh toán thành công",
+    Cancelled: "Bạn đã hủy vé",    
   };
   return messages[ticketStatus] || "Vé được cập nhật";
 };
@@ -95,8 +95,8 @@ export const createTicket = async (ticketData) => {
     id_ticket: newTicket._id,
     id_user: ticketData.user_id,
     status: false,
-    ticketStatus: "pending",
-    note: getNotificationMessage("pending"),
+    ticketStatus: "Pending",
+    note: getNotificationMessage("Pending"),
   });
 
   return newTicket;
@@ -114,9 +114,9 @@ export const confirmTicket = async (ticketId) => {
   await Notification.findOneAndUpdate(
     { id_ticket: ticketId },
     {
-      ticketStatus: "completed",
+      ticketStatus: "Completed",
       status: false,
-      note: getNotificationMessage("completed"),
+      note: getNotificationMessage("Completed"),
     },
     { upsert: true }
   );

@@ -34,13 +34,13 @@ export const bookForCustomer = asyncHandler(async (req, res) => {
 
 // Staff hủy vé cho khách
 export const cancelTicket = asyncHandler(async (req, res) => {
-  const { ticketId } = req.body; // Hoặc req.params tùy validateBody
+  const  ticketId  = req.body._id; // Hoặc req.params tùy validateBody
   const result = await ticketService.cancelTicket(ticketId);
   return sendSuccess(res, "Hủy vé thành công", result);
 });
 
 export const confirmTicket = asyncHandler(async (req, res) => {
-  const { ticketId } = req.body;
+  const  ticketId  = req.body_id;
   const ticket = await ticketService.confirmTicket(ticketId);
   return sendSuccess(res, "Ticket confirmed successfully", ticket);
 });
