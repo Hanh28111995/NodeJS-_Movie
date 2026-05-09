@@ -4,10 +4,12 @@ import {
   getAllTicketsByStaff,
   createCustomerByStaff,
   bookForCustomer,
-  cancelTicket
+  cancelTicket,  
 } from "../../controller/staff/ticket.js";
 import { validateBody } from "../../middleware/validation.js";
 import { submitNewTicket } from "../../validation/index.js";
+import { completeTicket } from "../../service/ticketService.js";
+import { cashConfirmPayment } from "../../controller/payment/paymentController.js";
 
 const staffTicketRouter = express.Router();
 
@@ -16,5 +18,6 @@ staffTicketRouter.get("/all", getAllTicketsByStaff);
 staffTicketRouter.post("/create-customer", createCustomerByStaff);
 staffTicketRouter.post("/bookingTicket", validateBody(submitNewTicket), bookForCustomer);
 staffTicketRouter.post("/cancelTicket", validateBody(submitNewTicket), cancelTicket);
+staffTicketRouter.post("/completeTicket", validateBody(submitNewTicket), cashConfirmPayment); 
 
 export default staffTicketRouter;

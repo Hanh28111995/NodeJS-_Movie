@@ -62,7 +62,7 @@ export const PaymentService = {
     confirm: async (res, ticketData) => {
       const ticketId = ticketData.id || ticketData._id;
       if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
-      const ticket = await ticketRepository.confirmTicketPayment(ticketId, ticketData.paymentStatus || "Completed");
+      const ticket = await ticketRepository.confirmTicket(ticketId);
       if (!ticket) return sendError(res, "Không tìm thấy vé", 404);
       return sendSuccess(res, "Thanh toán tiền mặt thành công", ticket);
     },
@@ -70,7 +70,7 @@ export const PaymentService = {
 
   // ==================== VNPAY ====================
   vnpay: {
-    // Tạo URL thanh toán, nhúng ticketId vào orderId để dùng lúc callback
+    // Tạo URL thanh toán, nhúng ticketId vào orderId 
     createPaymentUrl: async (res, req, ticketData) => {
       try {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
@@ -167,7 +167,7 @@ export const PaymentService = {
         const responseCode = query["vnp_ResponseCode"];
 
         if (responseCode === "00") {
-          if (ticketId) await ticketRepository.confirmTicketPayment(ticketId);
+          if (ticketId) await ticketRepository.completeTicket(ticketId);
           return res.redirect(
             `${FRONTEND_URL}/payment-result?status=success&method=vnpay&ticketId=${ticketId}`,
           );
@@ -293,7 +293,7 @@ export const PaymentService = {
         const ticketId = (orderId || "").split("__")[0];
 
         if (resultCode === "0") {
-          if (ticketId) await ticketRepository.confirmTicketPayment(ticketId);
+          if (ticketId) await ticketRepository.completeTicket(ticketId);
           return res.redirect(
             `${FRONTEND_URL}/payment-result?status=success&method=momo&ticketId=${ticketId}`,
           );

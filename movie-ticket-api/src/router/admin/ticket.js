@@ -2,6 +2,7 @@ import { addTicket, deleteTicket, getAllTickets, getTicketById, updateTicket, ca
 import express from "express";
 import { validateBody } from "../../middleware/validation.js";
 import { submitNewTicket } from "../../validation/index.js";
+import { cashConfirmPayment } from "../../controller/payment/paymentController.js";
 
 const adminTicketRouter = express.Router();
 
@@ -16,4 +17,7 @@ adminTicketRouter.post("/add", validateBody(submitNewTicket), addTicket);
 adminTicketRouter.delete("/delete/:id", deleteTicket);
 
 adminTicketRouter.post("/cancelTicket", validateBody(submitNewTicket), cancelTicket);           
+
+adminTicketRouter.post("/completeTicket", validateBody(submitNewTicket), cashConfirmPayment); 
+
 export default adminTicketRouter;
