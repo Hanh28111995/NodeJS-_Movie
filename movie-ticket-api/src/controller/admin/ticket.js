@@ -34,3 +34,9 @@ export const deleteTicket = asyncHandler(async (req, res) => {
   await ticketService.deleteTicket(id);
   return sendSuccess(res, "Ticket deleted successfully");
 });
+
+export const cancelTicket = asyncHandler(async (req, res) => {
+  const { ticketId } = req.body; // Hoặc req.params tùy validateBody
+    const result = await ticketService.cancelTicket(ticketId);
+    return sendSuccess(res, "Hủy vé thành công", result);
+  });
