@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const theaterSchema = new mongoose.Schema(
   {
-    cinema: {
+    cinemaName: {
       type: String,
       required: true,
     },
