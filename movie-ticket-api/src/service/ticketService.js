@@ -161,8 +161,9 @@ export const cancelTicket = async (ticketId) => {
 };
 
 export const getTicketById = async (ticketId) => {
-  const ticket = await InforTicket.findById(ticketId)
-    .populate("user_id", "username email userphone")
+  const ticket = await InforTicket.findById(ticketId)    
+    .populate("id_movie", "title")
+    .populate("id_theater", "name")
     .lean();
 
   if (!ticket) {

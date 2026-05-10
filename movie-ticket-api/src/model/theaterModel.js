@@ -10,6 +10,10 @@ const theaterSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    branch: {
+      type: String,
+      required: true,
+    },
     totalSeat: {
       rows: { type: Number, required: true },
       cols: { type: Number, required: true },
