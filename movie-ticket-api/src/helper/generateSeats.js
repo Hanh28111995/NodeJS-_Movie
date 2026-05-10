@@ -10,13 +10,13 @@ export const generateSeats = async (rows, cols) => {
   const seats = [];
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-  // Lấy SeatType mặc định (regular) để gán cho ghế mới
-  let defaultSeatType = await SeatType.findOne({ name: "regular" });
+  // Lấy SeatType mặc định (Standard) để gán cho ghế mới
+  let defaultSeatType = await SeatType.findOne({ name: "Standard" });
   
   // Nếu chưa có SeatType nào, tạo tạm một cái để không bị lỗi
   if (!defaultSeatType) {
     defaultSeatType = await SeatType.create({
-      name: "regular",
+      name: "Standard",
       price: 50000,
       description: "Ghế tiêu chuẩn"
     });
