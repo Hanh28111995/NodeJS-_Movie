@@ -25,7 +25,7 @@ export const submitNewTheater = (data) => {
     .isRequired(data.name, "name")
     .isRequired(data.cinemaName, "cinemaName")
     .isRequired(data.totalSeat, "totalSeat")
-    .isRequired(data.description, "description");
+    .isRequired(data.branch, "branch");    
   return error.get();
 };
 
