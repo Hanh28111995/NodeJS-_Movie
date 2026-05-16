@@ -11,10 +11,18 @@ const generateToken = (payload, secret, expiresIn) => {
 
 export const login = async (username, password) => {
   const user = await User.findOne({ username });
-  if (!user) return sendError(user, "Username does not exist", 401);
+  if (!user) {
+    const error = new Error("Username doesnt exist");
+    error.statusCode = 401;
+    throw error;
+  }
 
   const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return sendError(null, "Incorrect password", 401);
+  if (!isMatch) {
+    const error = new Error("Incorrect password");
+    error.statusCode = 401;
+    throw error;
+  }
 
   const payload = {
     id: user._id,
