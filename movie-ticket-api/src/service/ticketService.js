@@ -172,3 +172,26 @@ export const getTicketById = async (ticketId) => {
 
   return ticket;
 };
+
+export const completeTicket = async (ticketId) => {
+  const ticket = await InforTicket.findById(ticketId);
+  if (!ticket) throw new Error("Vé không tồn tại");
+
+  await InforTicket.updateOne(
+    { _id: ticketId },
+    { $set: { paymentStatus: "Completed" } }
+  );
+
+  // Update notification cho trạng thái thanh toán online thành công
+  await Notification.findOneAndUpdate(
+    { id_ticket: ticketId },
+    {
+      ticketStatus: "Completed",
+      status: false,
+      note: getNotificationMessage("Completed"),
+    },
+    { upsert: true }
+  );
+
+  return await InforTicket.findById(ticketId).lean();
+};

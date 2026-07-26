@@ -304,7 +304,6 @@ export const PaymentService = {
           );
         }
       } catch (err) {
-        console.error("CHI TIẾT LỖI XẢY RA TRONG VERIFY RETURN:", err);
         return res.redirect(`${FRONTEND_URL}/payment-result?status=error`);
       }
     },
