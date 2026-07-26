@@ -10,21 +10,20 @@ import paymentRouter from "./src/router/payment.js";
 import cronRouter from "./src/router/cron.js";
 import staffRouter from "./src/router/staff/index.js";
 
-
 import {
   verifyAdmin,
   verifyCustomer,
   verifyToken,
-  verifyStaff 
+  verifyStaff,
 } from "./src/middleware/index.js";
 import uploadRouter from "./src/router/uploads/uploads.js";
 import generalRouter from "./src/router/general.js";
-
 
 import dbMiddleware from "./src/middleware/db.js";
 import errorHandler from "./src/middleware/error.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import paymentResultRouter from "./src/router/paymentResult.js";
 
 export const TOKEN_LIST = [];
 export const TOKEN_BLACKLIST = new Set();
@@ -43,7 +42,7 @@ app.use(
   cors({
     origin: [process.env.FRONTEND_URL],
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.urlencoded({ extended: true }));
@@ -65,7 +64,9 @@ app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
 
 app.use("/api/general", generalRouter);
 app.use("/api/auth", authRouter);
-app.use("/api/payment", verifyToken,paymentRouter);
+app.use("/api/payment", verifyToken, paymentRouter);
+app.use("/api/payment", paymentResultRouter);
+
 app.use("/api/cron", cronRouter);
 
 // Middleware xử lý lỗi tập trung

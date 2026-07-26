@@ -18,10 +18,10 @@ paymentRouter.get("/status/:id", checkTicketPaymentStatus);
 
 // VNPAY
 paymentRouter.post("/create_vnpay", createVnpayPayment);
-paymentRouter.get("/return_vnpay", vnpayReturn);
+// paymentRouter.get("/return_vnpay", vnpayReturn);
 
 // MOMO
 paymentRouter.post("/create_momo", createMomoPayment);
-paymentRouter.get("/return_momo", momoReturn);
+// paymentRouter.get("/return_momo", momoReturn);
 
 export default paymentRouter;
