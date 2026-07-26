@@ -22,7 +22,7 @@ paymentRouter.post("/create_vnpay", verifyToken, createVnpayPayment);
 paymentRouter.get("/return_vnpay", vnpayReturn);
 
 // MOMO
-paymentRouter.post("/create_momo", verifyToken,createMomoPayment);
+paymentRouter.post("/create_momo", verifyToken, createMomoPayment);
 paymentRouter.get("/return_momo", momoReturn);
 
 export default paymentRouter;
