@@ -3,6 +3,8 @@ import express from "express";
 import Movie from "../model/movieModel.js";
 import Cinema from "../model/cinemaModel.js";
 import Showtime from "../model/showtimeModel.js";
+import Promotion from "../model/promotionModel.js";
+import Shop from "../model/shopModel.js";
 import asyncHandler from "../util/asyncHandler.js";
 import Theater from "../model/theaterModel.js";
 import SeatType from "../model/seatTypeModel.js";
@@ -190,5 +192,90 @@ generalRouter.get("/seatTypes", asyncHandler(async (req, res) => {
   const seatTypes = await SeatType.find().lean();
   return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
 }));
+
+generalRouter.get("/promotion/all", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
+  const promotions = await Promotion.find()
+    .select("banner startDate endDate")
+    .sort({ startDate: -1 })
+    .lean();
+
+  return sendSuccess(res, "Promotions retrieved successfully", promotions);
+}))
+
+generalRouter.get("/promotion/:id", asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (id === "all") {
+    addCacheHeader(res);
+    const promotions = await Promotion.find()
+      .select("banner startDate endDate")
+      .sort({ startDate: -1 })
+      .lean();
+    return sendSuccess(res, "Promotions retrieved successfully", promotions);
+  }
+
+  const promotion = await Promotion.findById(id).lean();
+  if (!promotion) return sendError(res, "Promotion not found", 404);
+  return sendSuccess(res, "Promotion retrieved successfully", promotion);
+}))
+
+generalRouter.get("/shop/all", asyncHandler(async (req, res) => {
+  addCacheHeader(res);
+  const { area, theater, productName, priceSort, productType } = req.query;
+  const query = {};
+  
+  if (productName) {
+    query.title = { $regex: productName, $options: "i" };
+  }
+
+  if (area) {
+    query.area = area;
+  }
+
+  if (theater) {
+    query.theater = theater;
+  }
+  
+  if (productType) {
+    query.productType = productType;
+  }
+
+  let sortQuery = { createdAt: -1 }; // Mặc định mới nhất lên đầu
+  if (priceSort) {
+    const sortOrder = priceSort.toLowerCase() === "asc" ? 1 : -1;
+    sortQuery = { price: sortOrder };
+  }
+
+  const shops = await Shop.find(query)
+    .select("title banner price area theater productType") // Bổ sung thêm các trường cho phù hợp nếu cần
+    .sort(sortQuery)
+    .lean();
+
+  return sendSuccess(res, "Shop products retrieved successfully", shops);
+}));
+
+generalRouter.get("/shop/:id", asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (id === "all") {
+    addCacheHeader(res);
+    const shops = await Shop.find()
+      .select("title banner price")
+      .sort({ createdAt: -1 })
+      .lean();
+    return sendSuccess(res, "Shop products retrieved successfully", shops);
+  }
+
+  const shop = await Shop.findOne({
+    $or: [
+      { id_shop: id },
+      ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : []),
+    ],
+  }).lean();
+
+  if (!shop) return sendError(res, "Shop product not found", 404);
+  return sendSuccess(res, "Shop product retrieved successfully", shop);
+}))
 
 export default generalRouter;

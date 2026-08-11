@@ -8,6 +8,8 @@ import adminSeatTypeRouter from "./seatType.js";
 import adminTheaterRouter from "./theater.js";
 import adminCinemaRouter from "./cinema.js";
 import adminNotificationRouter from "./notification.js";
+import adminPromotionRouter from "./promotion.js";
+import adminShopRouter from "./shop.js";
 import staffTicketRouter from "../staff/ticket.js";
 import scheduleGenRouter from "./schedulteGen.js";
 
@@ -22,6 +24,8 @@ adminRouter.use("/theater", adminTheaterRouter);
 adminRouter.use("/seatType", adminSeatTypeRouter);
 adminRouter.use("/schedule-generator", scheduleGenRouter);
 adminRouter.use("/notifications", adminNotificationRouter);
+adminRouter.use("/promotion", adminPromotionRouter);
+adminRouter.use("/shop", adminShopRouter);
 
 
 export default adminRouter;
