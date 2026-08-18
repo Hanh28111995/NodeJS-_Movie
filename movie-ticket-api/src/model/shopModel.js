@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { nanoid } from "nanoid";
 
 const optionSchema = new mongoose.Schema(
 	{
@@ -11,13 +10,7 @@ const optionSchema = new mongoose.Schema(
 );
 
 const shopSchema = new mongoose.Schema(
-	{
-		id_shop: {
-			type: String,
-			default: () => nanoid(10),
-			unique: true,
-			trim: true,
-		},
+	{		
 		title: {
 			type: String,
 			required: true,
