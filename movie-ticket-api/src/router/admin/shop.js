@@ -9,7 +9,7 @@ import { handleUploadBanner } from "../../middleware/upload.js";
 
 const adminShopRouter = express.Router();
 
-adminShopRouter.get("/allShops", getAllShops);
+adminShopRouter.get("/all", getAllShops);
 
 adminShopRouter.post("/add", handleUploadBanner, addShop);
 

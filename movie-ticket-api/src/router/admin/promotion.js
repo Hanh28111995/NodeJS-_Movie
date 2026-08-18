@@ -9,7 +9,7 @@ import { handleUploadBanner } from "../../middleware/upload.js";
 
 const adminPromotionRouter = express.Router();
 
-adminPromotionRouter.get("/allPromotions", getAllPromotions);
+adminPromotionRouter.get("/all", getAllPromotions);
 
 adminPromotionRouter.post("/add", handleUploadBanner, addPromotion);
 
