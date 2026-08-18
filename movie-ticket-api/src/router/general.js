@@ -5,6 +5,7 @@ import Cinema from "../model/cinemaModel.js";
 import Showtime from "../model/showtimeModel.js";
 import Promotion from "../model/promotionModel.js";
 import Shop from "../model/shopModel.js";
+import Banner from "../model/bannerModel.js";
 import asyncHandler from "../util/asyncHandler.js";
 import Theater from "../model/theaterModel.js";
 import SeatType from "../model/seatTypeModel.js";
@@ -46,13 +47,11 @@ generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
 
 generalRouter.get("/showBanners", asyncHandler(async (req, res) => {
   addCacheHeader(res);
-  const movies = await Movie.find()
+  const banners = await Banner.find()
     .sort({ createdAt: -1 })
-    .limit(5)
-    .select("title banner")
     .lean();
 
-  return sendSuccess(res, "Banners retrieved successfully", movies);
+  return sendSuccess(res, "Banners retrieved successfully", banners);
 }));
 
 generalRouter.get("/movie/all", asyncHandler(async (req, res) => {

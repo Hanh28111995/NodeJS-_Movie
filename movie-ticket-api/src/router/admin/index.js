@@ -10,7 +10,8 @@ import adminCinemaRouter from "./cinema.js";
 import adminNotificationRouter from "./notification.js";
 import adminPromotionRouter from "./promotion.js";
 import adminShopRouter from "./shop.js";
-import staffTicketRouter from "../staff/ticket.js";
+import adminBannerRouter from "./banner.js";
+// import staffTicketRouter from "../staff/ticket.js";
 import scheduleGenRouter from "./schedulteGen.js";
 
 const adminRouter = express.Router();
@@ -26,6 +27,7 @@ adminRouter.use("/schedule-generator", scheduleGenRouter);
 adminRouter.use("/notifications", adminNotificationRouter);
 adminRouter.use("/promotion", adminPromotionRouter);
 adminRouter.use("/shop", adminShopRouter);
+adminRouter.use("/banner", adminBannerRouter);
 
 
 export default adminRouter;
