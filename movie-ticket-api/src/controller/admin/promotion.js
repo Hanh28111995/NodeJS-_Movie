@@ -5,8 +5,7 @@ import {
 } from "../../helper/client.js";
 import Promotion from "../../model/promotionModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import { bucket } from "../../middleware/firebase.js";
-import fs from "fs";
+import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
 
 export const getAllPromotions = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -27,18 +26,7 @@ export const getAllPromotions = asyncHandler(async (req, res) => {
 export const addPromotion = asyncHandler(async (req, res) => {
   if (!req.file) return sendError(res, "Banner image is required");
 
-  const localPath = req.file.path;
-  const remotePath = `promotions/${Date.now()}_${req.file.originalname}`;
-  const fileRef = bucket.file(remotePath);
-
-  await bucket.upload(localPath, {
-    destination: remotePath,
-    metadata: { contentType: req.file.mimetype },
-  });
-  await fileRef.makePublic();
-  const bannerUrl = `https://storage.googleapis.com/${bucket.name}/${remotePath}`;
-  fs.unlinkSync(localPath);
-
+  const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "promotions");
   const newPromotion = await Promotion.create({ ...req.body, banner: bannerUrl });
   return sendSuccess(res, "Promotion added successfully", newPromotion);
 });
@@ -51,17 +39,8 @@ export const updatePromotion = asyncHandler(async (req, res) => {
   const updateData = { ...req.body };
 
   if (req.file) {
-    const localPath = req.file.path;
-    const remotePath = `promotions/${Date.now()}_${req.file.originalname}`;
-    const fileRef = bucket.file(remotePath);
-
-    await bucket.upload(localPath, {
-      destination: remotePath,
-      metadata: { contentType: req.file.mimetype },
-    });
-    await fileRef.makePublic();
-    updateData.banner = `https://storage.googleapis.com/${bucket.name}/${remotePath}`;
-    fs.unlinkSync(localPath);
+    const { publicUrl } = await uploadToFirebase(req.file, "promotions");
+    updateData.banner = publicUrl;
   }
 
   const updatedPromotion = await Promotion.findOneAndUpdate(
@@ -71,12 +50,7 @@ export const updatePromotion = asyncHandler(async (req, res) => {
   );
 
   if (req.file && promotion.banner) {
-    try {
-      const oldRemotePath = promotion.banner.split(`${bucket.name}/`)[1];
-      if (oldRemotePath) await bucket.file(oldRemotePath).delete();
-    } catch (err) {
-      console.log("Failed to delete old banner from Firebase:", err.message);
-    }
+    await deleteFromFirebase(promotion.banner);
   }
 
   return sendSuccess(res, "Promotion updated successfully", updatedPromotion);
@@ -88,12 +62,7 @@ export const deletePromotion = asyncHandler(async (req, res) => {
   if (!promotion) return sendError(res, "Promotion not found");
 
   if (promotion.banner) {
-    try {
-      const remotePath = promotion.banner.split(`${bucket.name}/`)[1];
-      if (remotePath) await bucket.file(remotePath).delete();
-    } catch (err) {
-      console.log("Failed to delete banner from Firebase:", err.message);
-    }
+    await deleteFromFirebase(promotion.banner);
   }
 
   await Promotion.findOneAndDelete({ _id: promotionid });

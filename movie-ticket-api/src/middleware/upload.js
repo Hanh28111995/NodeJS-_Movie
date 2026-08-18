@@ -1,8 +1,6 @@
 import multer from "multer";
 import path from "path";
 
-// Thiết lập nơi lưu + tên file
-
 const createStorage = (folder) =>
   multer.diskStorage({
     destination: (req, file, cb) => {
@@ -14,31 +12,36 @@ const createStorage = (folder) =>
     },
   });
 
-// Chỉ nhận ảnh
 const fileFilter = (req, file, cb) => {
-  const allowed = ["image/jpeg", "image/png", "image/jpg"];
+  const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
   if (allowed.includes(file.mimetype)) cb(null, true);
   else cb(new Error("Invalid file type"), false);
 };
 
-const uploadBanner = multer({
-  storage: createStorage("banner"),
-  fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // Giới hạn 2MB
-});
-
-export const handleUploadBanner = (req, res, next) => {
-  uploadBanner.single("File")(req, res, (err) => {
-    if (err) {
-      console.log("❌ Lỗi upload:", err.message);
-      return res.status(400).json({ message: err.message });
-    }
-    next();
+const createHandleUpload = ({ folder, fieldName = "File", maxSizeMB = 2 }) => {
+  const uploader = multer({
+    storage: createStorage(folder),
+    fileFilter,
+    limits: { fileSize: maxSizeMB * 1024 * 1024 },
   });
+
+  return (req, res, next) => {
+    uploader.single(fieldName)(req, res, (err) => {
+      if (err) {
+        console.log("❌ Lỗi upload:", err.message);
+        return res.status(400).json({ message: err.message });
+      }
+      next();
+    });
+  };
 };
+
+export const handleUploadBanner = createHandleUpload({ folder: "banner" });
+export const handleUploadPromotion = createHandleUpload({ folder: "promotions" });
+export const handleUploadShopProduct = createHandleUpload({ folder: "shopProducts" });
 
 export const uploadAvatar = multer({
   storage: createStorage("avatar"),
   fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // Giới hạn 2MB
+  limits: { fileSize: 2 * 1024 * 1024 },
 });

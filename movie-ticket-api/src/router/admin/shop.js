@@ -5,15 +5,15 @@ import {
   deleteShop,
 } from "../../controller/admin/shop.js";
 import express from "express";
-import { handleUploadBanner } from "../../middleware/upload.js";
+import { handleUploadShopProduct } from "../../middleware/upload.js";
 
 const adminShopRouter = express.Router();
 
 adminShopRouter.get("/all", getAllShops);
 
-adminShopRouter.post("/add", handleUploadBanner, addShop);
+adminShopRouter.post("/add", handleUploadShopProduct, addShop);
 
-adminShopRouter.put("/update/:shopid", handleUploadBanner, updateShop);
+adminShopRouter.put("/update/:shopid", handleUploadShopProduct, updateShop);
 
 adminShopRouter.delete("/delete/:shopid", deleteShop);
 

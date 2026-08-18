@@ -5,8 +5,7 @@ import {
 } from "../../helper/client.js";
 import Shop from "../../model/shopModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import { bucket } from "../../middleware/firebase.js";
-import fs from "fs";
+import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
 
 export const getAllShops = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -27,18 +26,7 @@ export const getAllShops = asyncHandler(async (req, res) => {
 export const addShop = asyncHandler(async (req, res) => {
   if (!req.file) return sendError(res, "Banner image is required");
 
-  const localPath = req.file.path;
-  const remotePath = `shopProducts/${Date.now()}_${req.file.originalname}`;
-  const fileRef = bucket.file(remotePath);
-
-  await bucket.upload(localPath, {
-    destination: remotePath,
-    metadata: { contentType: req.file.mimetype },
-  });
-  await fileRef.makePublic();
-  const bannerUrl = `https://storage.googleapis.com/${bucket.name}/${remotePath}`;
-  fs.unlinkSync(localPath);
-
+  const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "shopProducts");
   const newShop = await Shop.create({ ...req.body, banner: bannerUrl });
   return sendSuccess(res, "Shop product added successfully", newShop);
 });
@@ -51,28 +39,14 @@ export const updateShop = asyncHandler(async (req, res) => {
   const updateData = { ...req.body };
 
   if (req.file) {
-    const localPath = req.file.path;
-    const remotePath = `shopProducts/${Date.now()}_${req.file.originalname}`;
-    const fileRef = bucket.file(remotePath);
-
-    await bucket.upload(localPath, {
-      destination: remotePath,
-      metadata: { contentType: req.file.mimetype },
-    });
-    await fileRef.makePublic();
-    updateData.banner = `https://storage.googleapis.com/${bucket.name}/${remotePath}`;
-    fs.unlinkSync(localPath);
+    const { publicUrl } = await uploadToFirebase(req.file, "shopProducts");
+    updateData.banner = publicUrl;
   }
 
   const updatedShop = await Shop.findOneAndUpdate({ id_shop: shopid }, updateData, { new: true });
 
   if (req.file && shop.banner) {
-    try {
-      const oldRemotePath = shop.banner.split(`${bucket.name}/`)[1];
-      if (oldRemotePath) await bucket.file(oldRemotePath).delete();
-    } catch (err) {
-      console.log("Failed to delete old banner from Firebase:", err.message);
-    }
+    await deleteFromFirebase(shop.banner);
   }
 
   return sendSuccess(res, "Shop product updated successfully", updatedShop);
@@ -84,12 +58,7 @@ export const deleteShop = asyncHandler(async (req, res) => {
   if (!shop) return sendError(res, "Shop product not found");
 
   if (shop.banner) {
-    try {
-      const remotePath = shop.banner.split(`${bucket.name}/`)[1];
-      if (remotePath) await bucket.file(remotePath).delete();
-    } catch (err) {
-      console.log("Failed to delete banner from Firebase:", err.message);
-    }
+    await deleteFromFirebase(shop.banner);
   }
 
   await Shop.findOneAndDelete({ id_shop: shopid });

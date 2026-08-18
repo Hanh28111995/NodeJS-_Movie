@@ -5,15 +5,15 @@ import {
   deletePromotion,
 } from "../../controller/admin/promotion.js";
 import express from "express";
-import { handleUploadBanner } from "../../middleware/upload.js";
+import { handleUploadPromotion } from "../../middleware/upload.js";
 
 const adminPromotionRouter = express.Router();
 
 adminPromotionRouter.get("/all", getAllPromotions);
 
-adminPromotionRouter.post("/add", handleUploadBanner, addPromotion);
+adminPromotionRouter.post("/add", handleUploadPromotion, addPromotion);
 
-adminPromotionRouter.put("/update/:promotionid", handleUploadBanner, updatePromotion);
+adminPromotionRouter.put("/update/:promotionid", handleUploadPromotion, updatePromotion);
 
 adminPromotionRouter.delete("/delete/:promotionid", deletePromotion);
 
