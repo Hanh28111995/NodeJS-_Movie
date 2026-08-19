@@ -3,6 +3,7 @@ import {
   addShop,
   updateShop,
   deleteShop,
+  getShopProductDetail,
 } from "../../controller/admin/shop.js";
 import express from "express";
 import { handleUploadShopProduct } from "../../middleware/upload.js";
