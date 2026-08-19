@@ -12,6 +12,10 @@ const bannerSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    highlight: {
+      type: Boolean,
+      default: false,            
+    },
   },
   {
     timestamps: true,

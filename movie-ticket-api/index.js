@@ -17,10 +17,7 @@ import {
   verifyToken,
   verifyStaff 
 } from "./src/middleware/index.js";
-import uploadRouter from "./src/router/uploads/uploads.js";
 import generalRouter from "./src/router/general.js";
-
-
 import dbMiddleware from "./src/middleware/db.js";
 import errorHandler from "./src/middleware/error.js";
 import cookieParser from "cookie-parser";
@@ -55,7 +52,7 @@ app.use("/api", dbMiddleware);
 /*
 Link to router
  */
-app.use("/api/uploads", verifyToken, uploadRouter);
+// app.use("/api/uploads", verifyToken, uploadRouter);
 
 app.use("/api/admin", verifyToken, verifyAdmin, adminRouter);
 

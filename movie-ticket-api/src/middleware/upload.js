@@ -1,26 +1,20 @@
 import multer from "multer";
-import path from "path";
 
-const createStorage = (folder) =>
-  multer.diskStorage({
-    destination: (req, file, cb) => {
-      const dir = process.env.NODE_ENV === "production" ? `/tmp` : `src/upload/${folder}`;
-      cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-      cb(null, file.originalname);
-    },
-  });
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
-  if (allowed.includes(file.mimetype)) cb(null, true);
-  else cb(new Error("Invalid file type"), false);
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type"), false);
+  }
 };
 
-const createHandleUpload = ({ folder, maxSizeMB = 2 }) => {
+// Hàm factory tạo middleware với giới hạn dung lượng tùy chỉnh
+const createHandleUpload = (maxSizeMB) => {
   const uploader = multer({
-    storage: createStorage(folder),
+    storage: storage,
     fileFilter,
     limits: { fileSize: maxSizeMB * 1024 * 1024 },
   });
@@ -29,8 +23,11 @@ const createHandleUpload = ({ folder, maxSizeMB = 2 }) => {
     uploader.any()(req, res, (err) => {
       if (err) {
         console.log("❌ Lỗi upload:", err.message);
-        return res.status(400).json({ message: err.message });
+        // Kiểm tra lỗi nếu file quá lớn
+        const message = err.code === 'LIMIT_FILE_SIZE' ? `File size exceeds ${maxSizeMB}MB` : err.message;
+        return res.status(400).json({ message });
       }
+      
       if (req.files && req.files.length > 0) {
         req.file = req.files[0];
       }
@@ -39,13 +36,11 @@ const createHandleUpload = ({ folder, maxSizeMB = 2 }) => {
   };
 };
 
-export const handleUploadBanner = createHandleUpload({ folder: "banner" });
-export const handleUploadPromotion = createHandleUpload({ folder: "promotions" });
-export const handleUploadShopProduct = createHandleUpload({ folder: "shopProducts" });
-export const handleUploadAvatar = createHandleUpload({ folder: "avatar" });
+// Định nghĩa các middleware với dung lượng khác nhau
+export const handleUploadStandard = createHandleUpload(2); // Banner, Product: 2MB
+export const handleUploadAvatar = createHandleUpload(0.5);  // Avatar: 0.5MB (500KB)
 
-export const uploadAvatar = multer({
-  storage: createStorage("avatar"),
-  fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 },
-});
+// Bạn có thể đặt tên tường minh tùy ý
+export const handleUploadBanner = handleUploadStandard;
+export const handleUploadPromotion = handleUploadStandard;
+export const handleUploadShopProduct = handleUploadStandard;
