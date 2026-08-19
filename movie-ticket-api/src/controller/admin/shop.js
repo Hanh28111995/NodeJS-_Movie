@@ -5,7 +5,10 @@ import {
 } from "../../helper/client.js";
 import Shop from "../../model/shopModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
+import {
+  uploadToFirebase,
+  deleteFromFirebase,
+} from "../../helper/firebaseStorage.js";
 
 export const getAllShops = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -23,10 +26,20 @@ export const getAllShops = asyncHandler(async (req, res) => {
   });
 });
 
+export const getShopProductDetail = asyncHandler(async (req, res) => {
+  const { shopid } = req.params;
+  const shop = await Shop.findById(shopid).lean();
+  if (!shop) return sendError(res, "Shop product not found", 404);
+  return sendSuccess(res, "Shop product retrieved successfully", shop);
+});
+
 export const addShop = asyncHandler(async (req, res) => {
   if (!req.file) return sendError(res, "Banner image is required");
 
-  const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "shopProducts");
+  const { publicUrl: bannerUrl } = await uploadToFirebase(
+    req.file,
+    "shopProducts",
+  );
   const newShop = await Shop.create({ ...req.body, banner: bannerUrl });
   return sendSuccess(res, "Shop product added successfully", newShop);
 });
@@ -43,7 +56,11 @@ export const updateShop = asyncHandler(async (req, res) => {
     updateData.banner = publicUrl;
   }
 
-  const updatedShop = await Shop.findOneAndUpdate({ id_shop: shopid }, updateData, { new: true });
+  const updatedShop = await Shop.findOneAndUpdate(
+    { id_shop: shopid },
+    updateData,
+    { new: true },
+  );
 
   if (req.file && shop.banner) {
     await deleteFromFirebase(shop.banner);

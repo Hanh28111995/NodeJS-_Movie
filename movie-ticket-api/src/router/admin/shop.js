@@ -11,6 +11,8 @@ const adminShopRouter = express.Router();
 
 adminShopRouter.get("/all", getAllShops);
 
+adminShopRouter.get("/:shopid", getShopProductDetail);
+
 adminShopRouter.post("/add", handleUploadShopProduct, addShop);
 
 adminShopRouter.put("/update/:shopid", handleUploadShopProduct, updateShop);

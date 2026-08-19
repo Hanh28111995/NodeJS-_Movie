@@ -23,6 +23,13 @@ export const getAllPromotions = asyncHandler(async (req, res) => {
   });
 });
 
+export const getPromotionDetail = asyncHandler(async (req, res) => {
+  const { promotionid } = req.params;
+  const promotion = await Promotion.findById(promotionid).lean();
+  if (!promotion) return sendError(res, "Promotion not found", 404);
+  return sendSuccess(res, "Promotion retrieved successfully", promotion);
+});
+
 export const addPromotion = asyncHandler(async (req, res) => {
   if (!req.file) return sendError(res, "Banner image is required");
 
