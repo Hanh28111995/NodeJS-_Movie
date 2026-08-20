@@ -75,7 +75,7 @@ generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
   // Tìm theo id_movie (nanoid) hoặc _id (ObjectId)
   const movie = await Movie.findOne({
     $or: [
-      { id_movie: id },
+      { _id: id },
       ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : [])
     ]
   }).lean();
