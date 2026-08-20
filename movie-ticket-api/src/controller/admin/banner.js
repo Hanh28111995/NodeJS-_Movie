@@ -6,7 +6,10 @@ import {
 import Banner from "../../model/bannerModel.js";
 import Movie from "../../model/movieModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
+import {
+  uploadToFirebase,
+  deleteFromFirebase,
+} from "../../helper/firebaseStorage.js";
 
 export const getAllBanners = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -28,7 +31,7 @@ export const addBanner = asyncHandler(async (req, res) => {
   const { movie_id } = req.body;
   if (!movie_id) return sendError(res, "movie_id is required");
 
-  const movie = await Movie.findOne({ id_movie: movie_id });
+  const movie = await Movie.findOne({ _id: movie_id });
   if (!movie) return sendError(res, "Movie not found");
 
   if (!req.file) return sendError(res, "Banner image is required");
@@ -64,7 +67,9 @@ export const updateBanner = asyncHandler(async (req, res) => {
     updateData.url = publicUrl;
   }
 
-  const updatedBanner = await Banner.findByIdAndUpdate(bannerid, updateData, { new: true });
+  const updatedBanner = await Banner.findByIdAndUpdate(bannerid, updateData, {
+    new: true,
+  });
 
   if (req.file && banner.url) {
     await deleteFromFirebase(banner.url);
