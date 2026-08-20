@@ -11,7 +11,7 @@ import { handleUploadBanner } from "../../middleware/upload.js";
 const adminBannerRouter = express.Router();
 
 adminBannerRouter.get("/all", getAllBanners);
-adminBannerRouter.get("/detail/:bannerid", getBannerById);
+adminBannerRouter.get("/:bannerid", getBannerById);
 
 adminBannerRouter.post("/add", handleUploadBanner, addBanner);
 adminBannerRouter.put("/update/:bannerid", handleUploadBanner, updateBanner);
