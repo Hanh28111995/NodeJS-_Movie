@@ -57,7 +57,7 @@ export const updateBanner = asyncHandler(async (req, res) => {
   const updateData = {};
 
   if (movie_id) {
-    const movie = await Movie.findOne({ id_movie: movie_id });
+    const movie = await Movie.findOne({ _id: movie_id });
     if (!movie) return sendError(res, "Movie not found");
     updateData.movie_id = movie_id;
   }
