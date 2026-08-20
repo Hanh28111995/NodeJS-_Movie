@@ -64,15 +64,6 @@ generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
 generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  if (id === "all") {
-    addCacheHeader(res);
-    const { title } = req.query;
-    const query = title ? { title: { $regex: title, $options: "i" } } : {};
-    const movies = await Movie.find(query).sort({ releaseDate: -1 }).lean();
-    return sendSuccess(res, "All movies retrieved successfully", movies);
-  }
-
-  // Tìm theo id_movie (nanoid) hoặc _id (ObjectId)
   const movie = await Movie.findOne({
     $or: [
       { _id: id },
