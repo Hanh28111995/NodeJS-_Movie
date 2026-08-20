@@ -28,7 +28,7 @@ export const getAllBanners = asyncHandler(async (req, res) => {
 });
 
 export const addBanner = asyncHandler(async (req, res) => {
-  const { movie_id } = req.body;
+  const { movie_id, highlight } = req.body;
   if (!movie_id) return sendError(res, "movie_id is required");
 
   const movie = await Movie.findOne({ _id: movie_id });
@@ -37,7 +37,7 @@ export const addBanner = asyncHandler(async (req, res) => {
   if (!req.file) return sendError(res, "Banner image is required");
 
   const { publicUrl } = await uploadToFirebase(req.file, "banner");
-  const newBanner = await Banner.create({ url: publicUrl, movie_id });
+  const newBanner = await Banner.create({ url: publicUrl, movie_id, highlight });
   return sendSuccess(res, "Banner added successfully", newBanner);
 });
 

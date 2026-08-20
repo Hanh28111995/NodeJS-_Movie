@@ -57,7 +57,7 @@ generalRouter.get("/showBanners", asyncHandler(async (req, res) => {
 generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
   const { title } = req.query;
   const query = title ? { title: { $regex: title, $options: "i" } } : {};
-  const movies = await Movie.find(query).sort({ releaseDate: -1 }).lean();
+  const movies = await Movie.find(query).select('_id title banner releaseDate coming').sort({ releaseDate: -1 }).lean();
   return sendSuccess(res, "All movies retrieved successfully", movies);
 }));
 
