@@ -195,7 +195,7 @@ generalRouter.get("/seatTypes", asyncHandler(async (req, res) => {
 generalRouter.get("/promotion/all", asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const promotions = await Promotion.find()
-    .select("banner startDate endDate")
+    .select("banner highlight startDate endDate")
     .sort({ startDate: -1 })
     .lean();
 
