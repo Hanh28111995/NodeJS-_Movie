@@ -5,7 +5,11 @@ import {
 } from "../../helper/client.js";
 import Movie from "../../model/movieModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
+import {
+  uploadToFirebase,
+  deleteFromFirebase,
+} from "../../helper/firebaseStorage.js";
+import ScheduleConfig from "../../model/scheduleConfigModel.js";
 
 export const getAllMovies = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -29,20 +33,22 @@ export const searchMovies = asyncHandler(async (req, res) => {
   const limit = Math.min(100, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
 
-  const query = title
-    ? { title: { $regex: title, $options: "i" } }
-    : {};
+  const query = title ? { title: { $regex: title, $options: "i" } } : {};
 
   const total = await Movie.countDocuments(query);
 
   if (!title && total > 20) {
     return sendError(
       res,
-      `Có ${total} kết quả. Vui lòng nhập chi tiết hơn để tìm kiếm phim.`
+      `Có ${total} kết quả. Vui lòng nhập chi tiết hơn để tìm kiếm phim.`,
     );
   }
 
-  const movies = await Movie.find(query).sort({ title: 1 }).skip(skip).limit(limit).lean();
+  const movies = await Movie.find(query)
+    .sort({ title: 1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
 
   return sendSuccess(res, "Movies searched successfully", {
     movies,
@@ -90,6 +96,16 @@ export const deleteMovie = asyncHandler(async (req, res) => {
 
   if (movie.banner) {
     await deleteFromFirebase(movie.banner);
+  }
+
+  const isUsedInSchedule = await ScheduleConfig.findOne({
+    movie_ids: movie._id,
+  });
+  if (isUsedInSchedule) {
+    await ScheduleConfig.updateMany(
+      { movie_ids: movie._id },
+      { $pull: { movie_ids: movie._id } },
+    );
   }
 
   await Movie.findOneAndDelete({ id_movie: movieid });
