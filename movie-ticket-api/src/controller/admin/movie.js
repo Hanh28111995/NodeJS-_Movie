@@ -10,7 +10,7 @@ import {
   deleteFromFirebase,
 } from "../../helper/firebaseStorage.js";
 import ScheduleConfig from "../../model/scheduleConfigModel.js";
-import redisClient from "../../config/redis.js"; // 1. Import redisClient
+import redisClient from "../../config/Redis.js"; 
 
 // Helper xóa cache theo pattern (wildcard)
 const clearMovieCaches = async () => {

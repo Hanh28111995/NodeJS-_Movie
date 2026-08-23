@@ -2,7 +2,7 @@ import { sendError, sendServerError, sendSuccess } from "../../helper/client.js"
 import SeatType from "../../model/seatTypeModel.js";
 import { submitSeatType } from "../../validation/index.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import redisClient from "../../config/redis.js"; // 1. Import redisClient
+import redisClient from "../../config/Redis.js"; // 1. Import redisClient
 
 export const getSeatType = asyncHandler(async (req, res) => {
   const seatTypes = await SeatType.find().lean();

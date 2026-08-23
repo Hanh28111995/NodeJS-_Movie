@@ -1,7 +1,7 @@
 import { sendSuccess } from "../../helper/client.js";
 import Cinema from "../../model/cinemaModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import redisClient from "../../config/redis.js"; // 1. Import redisClient
+import redisClient from "../../config/Redis.js"; // 1. Import redisClient
 
 export const getAllCinemas = asyncHandler(async (req, res) => {
   const cinemas = await Cinema.find().lean();

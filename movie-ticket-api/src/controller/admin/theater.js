@@ -2,7 +2,7 @@ import { sendSuccess, sendError } from "../../helper/client.js";
 import Theater from "../../model/theaterModel.js";
 import { generateSeats } from "../../helper/generateSeats.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import redisClient from "../../config/redis.js"; // 1. Import redisClient
+import redisClient from "../../config/Redis.js"; // 1. Import redisClient
 
 // Helper xóa cache liên quan đến phòng chiếu và rạp
 const clearTheaterCaches = async () => {

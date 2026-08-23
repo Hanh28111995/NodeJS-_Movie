@@ -10,7 +10,7 @@ import {
   uploadToFirebase,
   deleteFromFirebase,
 } from "../../helper/firebaseStorage.js";
-import redisClient from "../../config/redis.js"; // 1. Import redisClient
+import redisClient from "../../config/Redis.js"; // 1. Import redisClient
 
 export const getAllBanners = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);

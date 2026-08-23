@@ -6,7 +6,7 @@ import {
 import Promotion from "../../model/promotionModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
-import redisClient from "../../config/redis.js";
+import redisClient from "../../config/Redis.js";
  // 1. Import redisClient
 
 export const getAllPromotions = asyncHandler(async (req, res) => {
