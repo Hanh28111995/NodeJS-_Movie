@@ -30,6 +30,7 @@ const PORT = process.env.PORT || 5000;
 Create Express server
  */
 const app = express();
+app.set('trust proxy', 1);
 app.use(cookieParser());
 app.use(
   cors({
