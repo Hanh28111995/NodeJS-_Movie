@@ -117,12 +117,16 @@ export const updateMovie = asyncHandler(async (req, res) => {
 export const deleteMovie = asyncHandler(async (req, res) => {
   const { movieid } = req.params;
   const movie = await Movie.findOne({ _id: movieid });
-  if (!movie) return sendError(res, "Movie not found");
-
+  if (!movie) return sendError(res, "Movie not found");  
   if (movie.banner) {
-    await deleteFromFirebase(movie.banner);
+    try {
+      await deleteFromFirebase(movie.banner);
+    } catch (firebaseError) {
+      console.error("Firebase deletion failed:", firebaseError);
+    }
   }
 
+  // 2. Kiểm tra và cập nhật ScheduleConfig
   const isUsedInSchedule = await ScheduleConfig.findOne({
     movie_ids: movie._id,
   });
@@ -132,10 +136,9 @@ export const deleteMovie = asyncHandler(async (req, res) => {
       { $pull: { movie_ids: movie._id } },
     );
   }
+  
+  await Movie.findOneAndDelete({ _id: movieid });
 
-  await Movie.findOneAndDelete({ id_movie: movieid });
-
-  // 4. Xóa toàn bộ cache liên quan đến phim ngay sau khi xóa
   await clearMovieCaches();
 
   return sendSuccess(res, "Movie deleted successfully");
