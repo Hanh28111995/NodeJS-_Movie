@@ -1,4 +1,4 @@
-import redisClient from "../config/redis.js";
+import redisClient from "../config/Redis.js";
 import InforTicket from "../model/inforTicketModel.js";
 import Showtime from "../model/showtimeModel.js";
 import Notification from "../model/userCartNotificationModel.js";
