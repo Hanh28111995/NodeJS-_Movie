@@ -116,7 +116,7 @@ export const updateMovie = asyncHandler(async (req, res) => {
 
 export const deleteMovie = asyncHandler(async (req, res) => {
   const { movieid } = req.params;
-  const movie = await Movie.findOne({ id_movie: movieid });
+  const movie = await Movie.findOne({ _id: movieid });
   if (!movie) return sendError(res, "Movie not found");
 
   if (movie.banner) {
