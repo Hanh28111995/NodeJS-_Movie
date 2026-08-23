@@ -13,8 +13,8 @@ export const bookingLimiter = rateLimit({
   standardHeaders: true,   // Trả về thông tin giới hạn qua header `RateLimit-*`
   legacyHeaders: false,    // Tắt header `X-RateLimit-*` cũ
   store: new RedisStore({
-    // Gửi lệnh đếm trực tiếp đến Redis hiện tại của bạn
-    sendCommand: (...args) => redisClient.call(...args),
+    // Sửa lại thành sendCommand(args) thay vì call(...args)
+    sendCommand: (args) => redisClient.sendCommand(args),
     prefix: "rl:booking:",   // Tiền tố phân biệt trên Redis
   }),
   handler: (req, res) => {
@@ -32,7 +32,8 @@ export const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new RedisStore({
-    sendCommand: (...args) => redisClient.call(...args),
+    // Sửa lại thành sendCommand(args) thay vì call(...args)
+    sendCommand: (args) => redisClient.sendCommand(args),
     prefix: "rl:global:",
   }),
   handler: (req, res) => {
