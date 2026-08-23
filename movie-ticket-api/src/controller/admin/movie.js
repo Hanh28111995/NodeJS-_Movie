@@ -77,7 +77,7 @@ export const searchMovies = asyncHandler(async (req, res) => {
 export const addMovie = asyncHandler(async (req, res) => {
   if (!req.file) return sendError(res, "Banner image is required");
 
-  const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "banner");
+  const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "movies");
   const newMovie = await Movie.create({ ...req.body, banner: bannerUrl });
 
   // 2. Xóa toàn bộ cache liên quan đến phim ngay sau khi thêm mới
@@ -94,7 +94,7 @@ export const updateMovie = asyncHandler(async (req, res) => {
   const updateData = { ...req.body };
 
   if (req.file) {
-    const { publicUrl } = await uploadToFirebase(req.file, "banner");
+    const { publicUrl } = await uploadToFirebase(req.file, "movies");
     updateData.banner = publicUrl;
   }
 
