@@ -87,8 +87,8 @@ export const addMovie = asyncHandler(async (req, res) => {
 });
 
 export const updateMovie = asyncHandler(async (req, res) => {
-  const { movieid } = req.params;
-  const movie = await Movie.findOne({ id_movie: movieid });
+  const movieid  = req.body._id;
+  const movie = await Movie.findOne({ _id: movieid });
   if (!movie) return sendError(res, "Movie not found");
 
   const updateData = { ...req.body };
