@@ -48,7 +48,7 @@ export const getAllMovies = asyncHandler(async (req, res) => {
 export const searchMovies = asyncHandler(async (req, res) => {
   const { title } = req.query;
   const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = Math.min(100, parseInt(req.query.limit) || 10);
+  const limit = Math.min(8, parseInt(req.query.limit) || 8);
   const skip = (page - 1) * limit;
 
   const query = title ? { title: { $regex: title, $options: "i" } } : {};

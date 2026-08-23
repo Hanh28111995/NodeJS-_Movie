@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 // 1. Lấy danh sách hoặc Tìm kiếm người dùng (Đã gộp chung getAll và search)
 export const getAllUser = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = Math.min(100, parseInt(req.query.limit) || 10);
+  const limit = Math.min(8, parseInt(req.query.limit) || 8);
   const skip = (page - 1) * limit;
 
   // Lấy keyword/search sạch sẽ
