@@ -14,8 +14,8 @@ export const getAllPromotions = asyncHandler(async (req, res) => {
   const limit = Math.min(100, parseInt(req.query.limit) || 10);
   const skip = (page - 1) * limit;
 
-  const [promotions, total] = await Promise.all([
-    Promotion.find().sort({ title: 1 }).skip(skip).limit(limit).lean(),
+  const [promotions, total] = await Promise.all([   
+    Promotion.find().sort({ createdAt: 1 }).skip(skip).limit(limit).lean(),
     Promotion.countDocuments(),
   ]);
 
