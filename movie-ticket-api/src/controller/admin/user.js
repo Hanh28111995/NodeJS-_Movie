@@ -10,60 +10,47 @@ import bcrypt from "bcryptjs";
 
 // 1. Lấy danh sách hoặc Tìm kiếm người dùng (Đã gộp chung getAll và search)
 export const getAllUser = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search, keyword } = req.query;
-  const searchTerm = (keyword || search || "").trim();
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, parseInt(req.query.limit) || 10);
+  const skip = (page - 1) * limit;
 
-  const pageNumber = Math.max(1, parseInt(page) || 1);
-  const limitNumber = Math.min(100, parseInt(limit) || 10);
-  const skip = (pageNumber - 1) * limitNumber;
+  // Lấy keyword/search sạch sẽ
+  const keyword = (req.query.keyword || req.query.search || "").trim();
 
+  // Xây dựng query tìm kiếm trực quan giống searchMovies
   let query = {};
-
-  if (searchTerm) {
-    const isPhoneNumber = /^\d+$/.test(searchTerm);
-    if (isPhoneNumber) {
-      query = {
-        $or: [
-          { userphone: searchTerm },
-          { userphone: { $regex: searchTerm, $options: "i" } },
-        ],
-      };
-    } else {
-      const regex = { $regex: searchTerm, $options: "i" };
-      query = {
-        $or: [{ username: regex }, { email: regex }],
-      };
-    }
+  if (keyword) {
+    const regex = { $regex: keyword, $options: "i" };
+    query = {
+      $or: [        
+        { email: regex },
+        { userphone: regex },
+      ],
+    };
   }
 
-  // Đếm tổng số lượng bản ghi thỏa mãn
   const total = await User.countDocuments(query);
 
-  // Truy vấn dữ liệu với sắp xếp tối ưu
   const users = await User.find(query)
     .select("-password")
-    .sort({      
-      ...(searchTerm && /^\d+$/.test(searchTerm)
-        ? { userphone: 1 }
-        : { createdAt: -1 }),
-    })
+    .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limitNumber)
+    .limit(limit)
     .lean();
 
   return sendSuccess(res, "Users retrieved successfully", {
     users,
     pagination: {
       total,
-      page: pageNumber,
-      limit: limitNumber,
-      totalPages: Math.ceil(total / limitNumber),
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     },
   });
 });
 
-// Giữ lại alias searchUser nếu route của bạn đang trỏ riêng tới nó
 export const searchUser = getAllUser;
+
 
 // 2. Lấy chi tiết user theo ID
 export const getUserById = asyncHandler(async (req, res) => {
