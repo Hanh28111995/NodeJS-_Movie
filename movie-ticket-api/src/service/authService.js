@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import User from "../model/userModel.js";
 import { auth as firebaseAuth } from "../middleware/firebase.js";
 import { sendError } from "../helper/client.js";
-import redisClient from "../config/redis.js";
+import redisClient from "../config/Redis.js";
 
 const generateToken = (payload, secret, expiresIn) => {
   return jwt.sign(payload, secret, { expiresIn });
