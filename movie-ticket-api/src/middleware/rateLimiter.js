@@ -1,7 +1,7 @@
 import rateLimit from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import { sendError } from "../helper/client.js";
-import redisClient from "../config/redis.js";
+import redisClient from "../config/Redis.js";
 
 /**
  * 1. Rate Limiter cho API nhạy cảm (Đặt vé, giữ ghế)

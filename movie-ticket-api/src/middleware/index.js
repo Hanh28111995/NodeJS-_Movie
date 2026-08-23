@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { mkdir } from "fs";
 import { sendError } from "../helper/client.js";
 import dotenv from "dotenv";
-import redisClient from "../config/redis.js";
+import redisClient from "../config/Redis.js";
 
 dotenv.config();
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
