@@ -10,13 +10,14 @@ import {
 import { validateBody } from "../../middleware/validation.js";
 import { submitNewTicket } from "../../validation/index.js";
 import { cashConfirmPayment } from "../../controller/payment/paymentController.js";
+import { bookingLimiter } from "../../middleware/rateLimiter.js";
 
 const staffTicketRouter = express.Router();
 
 staffTicketRouter.get("/search", searchTicketByStaff);
 staffTicketRouter.get("/all", getAllTicketsByStaff);
 staffTicketRouter.post("/create-customer", createCustomerByStaff);
-staffTicketRouter.post("/bookingTicket", validateBody(submitNewTicket), bookForCustomer);
+staffTicketRouter.post("/bookingTicket", bookingLimiter ,validateBody(submitNewTicket), bookForCustomer);
 staffTicketRouter.post("/cancelTicket", validateBody(submitNewTicket), cancelTicket);
 staffTicketRouter.post("/completeTicket", validateBody(submitNewTicket), confirmTicket); 
 

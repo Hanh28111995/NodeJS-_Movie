@@ -1,3 +1,4 @@
+import redisClient from "../config/redis.js";
 import InforTicket from "../model/inforTicketModel.js";
 import Showtime from "../model/showtimeModel.js";
 import Notification from "../model/userCartNotificationModel.js";
@@ -70,21 +71,48 @@ export const createTicket = async (ticketData) => {
     ticketData.transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   }
 
-  // Khóa ghế (Atomic update)
-  if (ticketData.showtime_id && ticketData.seatName?.length > 0) {
-    const seatNumbers = ticketData.seatName.map(s => s.seatNumber || s);
+  const showtimeId = ticketData.showtime_id;
+  const seatNumbers = ticketData.seatName?.map(s => s.seatNumber || s) || [];
 
-    const result = await Showtime.updateOne(
-      {
-        _id: ticketData.showtime_id,
-        "seats": { $not: { $elemMatch: { seatNumber: { $in: seatNumbers }, isBooked: true } } }
-      },
-      { $set: { "seats.$[seat].isBooked": true } },
-      { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
-    );
+  if (showtimeId && seatNumbers.length > 0) {
+    // 1. Tạo các khóa Redis cho từng ghế đang muốn đặt (Ví dụ giữ khóa trong 5 giây)
+    const lockKeys = seatNumbers.map(seat => `lock:seat:${showtimeId}:${seat}`);
+    const acquiredLocks = [];
 
-    if (result.matchedCount === 0) {
-      throw new Error("Một hoặc nhiều ghế đã được đặt bởi người khác");
+    try {
+      // Thử acquire lock cho tất cả các ghế khách chọn
+      for (const lockKey of lockKeys) {
+        const acquired = await redisClient.set(lockKey, "locked", {
+          NX: true,
+          EX: 5, // Khóa tồn tại trong 5 giây để hoàn tất transaction
+        });
+
+        if (acquired !== "OK") {
+          // Nếu có bất kỳ ghế nào đang bị người khác giữ khóa, dừng lại ngay
+          throw new Error(`Ghế ${lockKey.split(':').pop()} đang có người khác thao tác thanh toán, vui lòng chọn ghế khác!`);
+        }
+        acquiredLocks.push(lockKey);
+      }
+
+      // 2. Sau khi đã giữ được khóa trên Redis, tiến hành kiểm tra & cập nhật MongoDB như logic cũ của bạn
+      const result = await Showtime.updateOne(
+        {
+          _id: showtimeId,
+          "seats": { $not: { $elemMatch: { seatNumber: { $in: seatNumbers }, isBooked: true } } }
+        },
+        { $set: { "seats.$[seat].isBooked": true } },
+        { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
+      );
+
+      if (result.matchedCount === 0) {
+        throw new Error("Một hoặc nhiều ghế đã được đặt bởi người khác");
+      }
+
+    } finally {
+      // 3. Quan trọng: Dù thành công hay thất bại, bắt buộc phải giải phóng khóa Redis để nhường chỗ
+      for (const lockKey of acquiredLocks) {
+        await redisClient.del(lockKey);
+      }
     }
   }
 

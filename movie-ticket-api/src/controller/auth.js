@@ -29,7 +29,6 @@ export const logout = asyncHandler(async (req, res) => {
   await authService.logout(refreshToken, accessToken);
 
   res.clearCookie("refreshToken", COOKIE_OPTIONS);
-
   return sendSuccess(res, "Đăng xuất thành công");
 });
 

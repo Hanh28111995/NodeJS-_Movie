@@ -22,19 +22,14 @@ import dbMiddleware from "./src/middleware/db.js";
 import errorHandler from "./src/middleware/error.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import { globalLimiter } from "./src/middleware/rateLimiter.js";
 
-export const TOKEN_LIST = [];
-export const TOKEN_BLACKLIST = new Set();
 
 const PORT = process.env.PORT || 5000;
-const DEV = process.env.NODE_ENV == 1;
-
 /*
 Create Express server
  */
-const SESSION_AGE = 1000 * 60 * 60 * 2;
 const app = express();
-
 app.use(cookieParser());
 app.use(
   cors({
@@ -46,6 +41,7 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+app.use(globalLimiter);
 // Áp dụng dbMiddleware cho tất cả các route API
 app.use("/api", dbMiddleware);
 

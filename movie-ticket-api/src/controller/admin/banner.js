@@ -10,6 +10,7 @@ import {
   uploadToFirebase,
   deleteFromFirebase,
 } from "../../helper/firebaseStorage.js";
+import redisClient from "../../config/redis.js"; // 1. Import redisClient
 
 export const getAllBanners = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -38,6 +39,10 @@ export const addBanner = asyncHandler(async (req, res) => {
 
   const { publicUrl } = await uploadToFirebase(req.file, "banner");
   const newBanner = await Banner.create({ url: publicUrl, movie_id, highlight });
+
+  // 2. Xóa cache banner ngay lập tức khi thêm mới
+  await redisClient.del("cache:banners").catch(console.error);
+
   return sendSuccess(res, "Banner added successfully", newBanner);
 });
 
@@ -75,6 +80,9 @@ export const updateBanner = asyncHandler(async (req, res) => {
     await deleteFromFirebase(banner.url);
   }
 
+  // 3. Xóa cache banner ngay lập tức khi cập nhật
+  await redisClient.del("cache:banners").catch(console.error);
+
   return sendSuccess(res, "Banner updated successfully", updatedBanner);
 });
 
@@ -88,5 +96,9 @@ export const deleteBanner = asyncHandler(async (req, res) => {
   }
 
   await Banner.findByIdAndDelete(bannerid);
+
+  // 4. Xóa cache banner ngay lập tức khi xóa
+  await redisClient.del("cache:banners").catch(console.error);
+
   return sendSuccess(res, "Banner deleted successfully");
 });

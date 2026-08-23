@@ -9,6 +9,7 @@ import Banner from "../model/bannerModel.js";
 import asyncHandler from "../util/asyncHandler.js";
 import Theater from "../model/theaterModel.js";
 import SeatType from "../model/seatTypeModel.js";
+import { cacheMiddleware } from "../middleware/redisCache.js";
 
 const generalRouter = express.Router();
 
@@ -17,7 +18,7 @@ const addCacheHeader = (res) => {
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=30');
 };
 
-generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
+generalRouter.get("/showingMovies", cacheMiddleware("cache:showingMovies", 300) ,asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const now = new Date();
   const showtimes = await Showtime.find({ startTime: { $gte: now } })
@@ -31,7 +32,7 @@ generalRouter.get("/showingMovies", asyncHandler(async (req, res) => {
   return sendSuccess(res, "Now showing movies retrieved successfully", movies);
 }));
 
-generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
+generalRouter.get("/comingMovies", cacheMiddleware("cache:comingMovies", 300),asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const now = new Date();
   const showtimes = await Showtime.find({ startTime: { $gt: now } })
@@ -45,7 +46,7 @@ generalRouter.get("/comingMovies", asyncHandler(async (req, res) => {
   return sendSuccess(res, "Coming soon movies retrieved successfully", movies);
 }));
 
-generalRouter.get("/showBanners", asyncHandler(async (req, res) => {
+generalRouter.get("/showBanners", cacheMiddleware("cache:banners", 600),asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const banners = await Banner.find()
     .sort({ createdAt: -1 })
@@ -75,9 +76,10 @@ generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
   return sendSuccess(res, "Movie retrieved successfully", movie);
 }));
 
-generalRouter.get("/cinema", asyncHandler(async (req, res) => {
+generalRouter.get("/cinema", cacheMiddleware("cache:cinemas", 600), asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const cinemas = await Cinema.find().lean();
+  if (res.sendCached) return res.sendCached("All cinemas retrieved successfully", cinemas);
   return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
 }));
 
@@ -97,7 +99,7 @@ generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
   return sendSuccess(res, "Cinema branches retrieved successfully", cinemas);
 }));
 
-generalRouter.get("/locations", asyncHandler(async (req, res) => {
+generalRouter.get("/locations", cacheMiddleware("cache:locations", 600), asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const cinemas = await Cinema.find().select("address").lean();
 
@@ -125,12 +127,14 @@ generalRouter.get("/locations", asyncHandler(async (req, res) => {
     cumRap: Array.from(item.cumRap)
   }));
 
+  if (res.sendCached) return res.sendCached("Locations retrieved successfully", formattedLocations);
   return sendSuccess(res, "Locations retrieved successfully", formattedLocations);
 }));
 
-generalRouter.get("/theaterByCinema", asyncHandler(async (req, res) => {
+generalRouter.get("/theaterByCinema", cacheMiddleware("cache:theaterByCinema", 300), asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const theaters = await Cinema.find().populate("theaters").lean();
+  if (res.sendCached) return res.sendCached("All theaters retrieved successfully", theaters);
   return sendSuccess(res, "All theaters retrieved successfully", theaters);
 }));
 
@@ -142,7 +146,6 @@ generalRouter.get("/theaters/:id", asyncHandler(async (req, res) => {
 }));
 
 generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
-  // Không cache API này vì dữ liệu showtime thay đổi liên tục và phụ thuộc query params phức tạp
   const { branch, date, idMovie } = req.query;
 
   let conditions = [];
@@ -177,19 +180,21 @@ generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
   return sendSuccess(res, "Filtered showtimes retrieved successfully", showtimes);
 }));
 
-generalRouter.get("/seatTypes", asyncHandler(async (req, res) => {
+generalRouter.get("/seatTypes", cacheMiddleware("cache:seatTypes", 3600), asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const seatTypes = await SeatType.find().lean();
+  if (res.sendCached) return res.sendCached("All seat types retrieved successfully", seatTypes);
   return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
 }));
 
-generalRouter.get("/promotion/all", asyncHandler(async (req, res) => {
+generalRouter.get("/promotion/all", cacheMiddleware("cache:promotions", 300), asyncHandler(async (req, res) => {
   addCacheHeader(res);
   const promotions = await Promotion.find()
     .select("banner highlight startDate endDate")
     .sort({ startDate: -1 })
     .lean();
 
+  if (res.sendCached) return res.sendCached("Promotions retrieved successfully", promotions);
   return sendSuccess(res, "Promotions retrieved successfully", promotions);
 }))
 
@@ -231,14 +236,14 @@ generalRouter.get("/shop/all", asyncHandler(async (req, res) => {
     query.productType = productType;
   }
 
-  let sortQuery = { createdAt: -1 }; // Mặc định mới nhất lên đầu
+  let sortQuery = { createdAt: -1 }; 
   if (priceSort) {
     const sortOrder = priceSort.toLowerCase() === "asc" ? 1 : -1;
     sortQuery = { price: sortOrder };
   }
 
   const shops = await Shop.find(query)
-    .select("title banner price area theater productType") // Bổ sung thêm các trường cho phù hợp nếu cần
+    .select("title banner price area theater productType") 
     .sort(sortQuery)
     .lean();
 

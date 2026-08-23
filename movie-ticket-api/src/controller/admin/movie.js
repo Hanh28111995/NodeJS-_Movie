@@ -10,6 +10,24 @@ import {
   deleteFromFirebase,
 } from "../../helper/firebaseStorage.js";
 import ScheduleConfig from "../../model/scheduleConfigModel.js";
+import redisClient from "../../config/redis.js"; // 1. Import redisClient
+
+// Helper xóa cache theo pattern (wildcard)
+const clearMovieCaches = async () => {
+  try {
+    // Xóa các key cố định và các key tìm kiếm động bắt đầu bằng tiền tố liên quan đến phim
+    await redisClient.del("cache:showingMovies").catch(() => {});
+    await redisClient.del("cache:comingMovies").catch(() => {});
+    
+    // Quét và xóa các key search động (ví dụ cache:movie:all:*)
+    const keys = await redisClient.keys("cache:movie:all:*");
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+    }
+  } catch (error) {
+    console.error("Error clearing movie cache:", error);
+  }
+};
 
 export const getAllMovies = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -61,6 +79,10 @@ export const addMovie = asyncHandler(async (req, res) => {
 
   const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "banner");
   const newMovie = await Movie.create({ ...req.body, banner: bannerUrl });
+
+  // 2. Xóa toàn bộ cache liên quan đến phim ngay sau khi thêm mới
+  await clearMovieCaches();
+
   return sendSuccess(res, "Movie added successfully", newMovie);
 });
 
@@ -86,6 +108,9 @@ export const updateMovie = asyncHandler(async (req, res) => {
     await deleteFromFirebase(movie.banner);
   }
 
+  // 3. Xóa toàn bộ cache liên quan đến phim ngay sau khi cập nhật
+  await clearMovieCaches();
+
   return sendSuccess(res, "Movie updated successfully", updatedMovie);
 });
 
@@ -109,5 +134,9 @@ export const deleteMovie = asyncHandler(async (req, res) => {
   }
 
   await Movie.findOneAndDelete({ id_movie: movieid });
+
+  // 4. Xóa toàn bộ cache liên quan đến phim ngay sau khi xóa
+  await clearMovieCaches();
+
   return sendSuccess(res, "Movie deleted successfully");
 });

@@ -6,6 +6,8 @@ import {
 import Promotion from "../../model/promotionModel.js";
 import asyncHandler from "../../util/asyncHandler.js";
 import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
+import redisClient from "../../config/redis.js";
+ // 1. Import redisClient
 
 export const getAllPromotions = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -35,6 +37,10 @@ export const addPromotion = asyncHandler(async (req, res) => {
 
   const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "promotions");
   const newPromotion = await Promotion.create({ ...req.body, banner: bannerUrl });
+
+  // 2. Xóa cache khuyến mãi ngay lập tức khi thêm mới
+  await redisClient.del("cache:promotions").catch(console.error);
+
   return sendSuccess(res, "Promotion added successfully", newPromotion);
 });
 
@@ -60,6 +66,9 @@ export const updatePromotion = asyncHandler(async (req, res) => {
     await deleteFromFirebase(promotion.banner);
   }
 
+  // 3. Xóa cache khuyến mãi ngay lập tức khi cập nhật
+  await redisClient.del("cache:promotions").catch(console.error);
+
   return sendSuccess(res, "Promotion updated successfully", updatedPromotion);
 });
 
@@ -73,5 +82,9 @@ export const deletePromotion = asyncHandler(async (req, res) => {
   }
 
   await Promotion.findOneAndDelete({ _id: promotionid });
+
+  // 4. Xóa cache khuyến mãi ngay lập tức khi xóa
+  await redisClient.del("cache:promotions").catch(console.error);
+
   return sendSuccess(res, "Promotion deleted successfully");
 });

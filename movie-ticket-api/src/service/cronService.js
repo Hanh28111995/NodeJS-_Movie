@@ -1,19 +1,19 @@
+
+
+import redisClient from "../config/Redis.js";
 import InforTicket from "../model/inforTicketModel.js";
 import Showtime from "../model/showtimeModel.js";
 
 const EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 tiếng
 
 /**
- * @desc Lazy cleanup — gọi khi getShowtimeById, dọn vé Pending quá hạn của 1 suất chiếu
+ * @desc Lazy cleanup — gọi khi getShowtimeById hoặc thao tác liên quan, dọn vé Pending quá hạn
  */
-export const cleanupExpiredTicketsByShowtime = async (movieId, theaterId, startTime) => {
+export const cleanupExpiredTicketsByShowtime = async (showtimeId) => {
   const expiredBefore = new Date(Date.now() - EXPIRY_MS);
-  const startTimeStr = startTime instanceof Date ? startTime.toISOString() : startTime;
 
   const expiredTickets = await InforTicket.find({
-    id_movie: movieId,
-    id_theater: theaterId,
-    startTime: startTimeStr,
+    showtime_id: showtimeId,
     paymentStatus: "Pending",
     createdAt: { $lt: expiredBefore },
   });
@@ -25,22 +25,30 @@ export const cleanupExpiredTicketsByShowtime = async (movieId, theaterId, startT
     .map(s => (typeof s === "object" ? s.seatNumber : s))
     .filter(Boolean);
 
+  // Giải phóng ghế trên Showtime
   await Showtime.updateOne(
-    { id_movie: movieId, theater: theaterId, startTime: startTime },
+    { _id: showtimeId },
     { $set: { "seats.$[seat].isBooked": false } },
     { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbersToRelease } }] }
   );
 
+  // Đổi trạng thái vé thành Failed
   await InforTicket.updateMany(
     { _id: { $in: expiredTickets.map(t => t._id) } },
     { $set: { paymentStatus: "Failed" } }
   );
 
-  console.log(`[Lazy Cleanup] Giải phóng ${seatNumbersToRelease.length} ghế.`);
+  // Xóa Redis Lock tương ứng (phòng hờ kẹt lock)
+  for (const seatNum of seatNumbersToRelease) {
+    const lockKey = `lock:seat:${showtimeId}:${seatNum}`;
+    await redisClient.del(lockKey).catch(() => {});
+  }
+
+  console.log(`[Lazy Cleanup] Giải phóng ${seatNumbersToRelease.length} ghế cho suất chiếu ${showtimeId}.`);
 };
 
 /**
- * @desc Global cleanup — quét toàn bộ vé Pending quá hạn (gọi từ cron endpoint)
+ * @desc Global cleanup — quét toàn bộ hệ thống tìm vé Pending quá hạn (gọi từ cron endpoint/cron job)
  */
 export const cleanupExpiredTickets = async () => {
   const expiredBefore = new Date(Date.now() - EXPIRY_MS);
@@ -58,31 +66,38 @@ export const cleanupExpiredTickets = async () => {
 
   for (const ticket of expiredTickets) {
     try {
-      // Chỉ giải phóng ghế nếu có đủ thông tin suất chiếu
-      if (ticket.id_movie && ticket.id_theater && ticket.startTime) {
+      if (ticket.showtime_id && ticket.seatName?.length > 0) {
         const seatNumbers = ticket.seatName
           .map(s => (typeof s === "object" ? s.seatNumber : s))
           .filter(Boolean);
 
         if (seatNumbers.length > 0) {
+          // Giải phóng ghế trong Showtime tương ứng
           await Showtime.updateOne(
-            { id_movie: ticket.id_movie, theater: ticket.id_theater, startTime: ticket.startTime },
+            { _id: ticket.showtime_id },
             { $set: { "seats.$[seat].isBooked": false } },
             { arrayFilters: [{ "seat.seatNumber": { $in: seatNumbers } }] }
           );
+
+          // Xóa Redis Lock khớp với cấu trúc lúc createTicket
+          for (const seatNum of seatNumbers) {
+            const lockKey = `lock:seat:${ticket.showtime_id}:${seatNum}`;
+            await redisClient.del(lockKey).catch(() => {});
+          }
         }
       } else {
-        console.warn(`[Cron] Vé ${ticket._id} thiếu thông tin suất chiếu, không thể giải phóng ghế.`);
+        console.warn(`[Cron] Vé ${ticket._id} thiếu thông tin showtime_id hoặc ghế, không thể giải phóng.`);
       }
 
-      // Cập nhật trạng thái vé bằng updateOne để tránh trigger validation lỗi cho các field cũ bị thiếu
+      // Cập nhật trạng thái vé thành Failed
       await InforTicket.updateOne(
         { _id: ticket._id },
         { $set: { paymentStatus: "Failed" } }
       );
+      
       processedCount++;
     } catch (err) {
-      console.error(`[Cron] Lỗi xử lý vé ${ticket._id}:`, err.message);
+      console.error(`[Cron] Lỗi xử lý vé hết hạn ${ticket._id}:`, err.message);
     }
   }
 

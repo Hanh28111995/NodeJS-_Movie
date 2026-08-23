@@ -2,8 +2,8 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../model/userModel.js";
 import { auth as firebaseAuth } from "../middleware/firebase.js";
-import { TOKEN_BLACKLIST } from "../../index.js";
 import { sendError } from "../helper/client.js";
+import redisClient from "../config/redis.js";
 
 const generateToken = (payload, secret, expiresIn) => {
   return jwt.sign(payload, secret, { expiresIn });
@@ -55,9 +55,14 @@ export const login = async (username, password) => {
 export const logout = async (refreshToken, accessToken) => {
   if (refreshToken) {
     await User.updateOne({ refreshToken }, { $set: { refreshToken: "" } });
+    await redisClient.set(`bl:refresh:${refreshToken}`, "revoked", {
+      EX: 7 * 24 * 60 * 60,
+    });
   }
   if (accessToken) {
-    TOKEN_BLACKLIST.add(accessToken);
+    await redisClient.set(`bl:access:${accessToken}`, "revoked", {
+      EX: 10 * 60,
+    });
   }
 };
 
