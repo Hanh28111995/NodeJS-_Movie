@@ -22,6 +22,6 @@ adminUserRouter.post("/add", validateBody(submitNewUser), addNewUser);
 
 adminUserRouter.put("/update/:userid", validateBody(submitNewUser), updateUser);
 
-adminUserRouter.delete("delete/:userid", deleteUser);
+adminUserRouter.delete("/delete/:userid", deleteUser);
 
 export default adminUserRouter;
