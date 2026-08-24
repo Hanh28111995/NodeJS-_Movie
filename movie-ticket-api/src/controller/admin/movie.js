@@ -11,6 +11,7 @@ import {
 } from "../../helper/firebaseStorage.js";
 import ScheduleConfig from "../../model/scheduleConfigModel.js";
 import redisClient from "../../config/Redis.js"; 
+import Showtime from "../../model/showtimeModel.js";
 
 // Helper xóa cache theo pattern (wildcard)
 const clearMovieCaches = async () => {
@@ -136,6 +137,8 @@ export const deleteMovie = asyncHandler(async (req, res) => {
       { $pull: { movie_ids: movie._id } },
     );
   }
+  
+  await Showtime.deleteMany({ id_movie: movie._id });
   
   await Movie.findOneAndDelete({ _id: movieid });
 
