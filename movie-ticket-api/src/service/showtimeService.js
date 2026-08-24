@@ -76,7 +76,6 @@ export const fetchAllShowtimes = async (page, limit) => {
 
   const [showtimes, total] = await Promise.all([
     Showtime.find()
-      .populate("id_movie", "title")
       .populate("cinema")
       .populate("theater", "-seats")
       .sort({ startTime: -1 })
