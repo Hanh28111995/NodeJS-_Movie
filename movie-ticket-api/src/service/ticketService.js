@@ -223,3 +223,29 @@ export const completeTicket = async (ticketId) => {
 
   return await InforTicket.findById(ticketId).lean();
 };
+
+export const updateTicket = async (id, updateData) => {
+  const updatedTicket = await InforTicket.findByIdAndUpdate(id, updateData, {
+    new: true, // Trả về dữ liệu sau khi đã cập nhật
+    runValidators: true,
+  });
+
+  if (!updatedTicket) {
+    throw new Error("Không tìm thấy vé để cập nhật");
+  }
+
+  return updatedTicket;
+};
+
+// 5. Xóa vé theo ID
+export const deleteTicket = async (id) => {
+  const deletedTicket = await InforTicket.findByIdAndDelete(id);
+  if (!deletedTicket) {
+    throw new Error("Không tìm thấy vé để xóa");
+  }
+  return deletedTicket;
+};
+
+
+
+

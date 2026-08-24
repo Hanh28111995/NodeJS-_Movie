@@ -2,77 +2,41 @@ import { sendSuccess } from "../../helper/client.js";
 import * as ticketService from "../../service/ticketService.js";
 import asyncHandler from "../../util/asyncHandler.js";
 
-// 1. Lấy danh sách vé (có phân trang và lọc theo paymentStatus)
-export const getAllTickets = async ({ page, limit, paymentStatus }) => {
-  const skip = (page - 1) * limit;
-
-  // Tạo điều kiện lọc nếu có paymentStatus
-  const filter = {};
-  if (paymentStatus) {
-    filter.paymentStatus = paymentStatus;
-  }
-
-  const tickets = await Ticket.find(filter).skip(skip).limit(limit);
-  const total = await Ticket.countDocuments(filter);
-
-  return {
-    tickets,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-};
-
-// 2. Lấy thông tin chi tiết vé theo ID
-export const getTicketById = async (id) => {
-  const ticket = await Ticket.findById(id);
-  if (!ticket) {
-    throw new Error("Không tìm thấy vé");
-  }
-  return ticket;
-};
-
-// 3. Tạo mới một vé
-export const createTicket = async (ticketData) => {
-  const newTicket = await Ticket.create(ticketData);
-  return newTicket;
-};
-
-// 4. Cập nhật thông tin vé theo ID
-export const updateTicket = async (id, updateData) => {
-  const updatedTicket = await Ticket.findByIdAndUpdate(id, updateData, {
-    new: true, // Trả về dữ liệu sau khi đã cập nhật
-    runValidators: true,
+export const getAllTickets = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, paymentStatus } = req.query;
+  const result = await ticketService.getAllTickets({
+    page: Number(page),
+    limit: Number(limit),
+    paymentStatus,
   });
+  return sendSuccess(res, "All tickets retrieved successfully", result);
+});
 
-  if (!updatedTicket) {
-    throw new Error("Không tìm thấy vé để cập nhật");
-  }
+export const getTicketById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const ticket = await ticketService.getTicketById(id);
+  return sendSuccess(res, "Ticket found", { ticket });
+});
 
-  return updatedTicket;
-};
+export const addTicket = asyncHandler(async (req, res) => {
+  const newTicket = await ticketService.createTicket(req.body);
+  return sendSuccess(res, "Ticket created successfully", newTicket);
+});
 
-// 5. Xóa vé theo ID
-export const deleteTicket = async (id) => {
-  const deletedTicket = await Ticket.findByIdAndDelete(id);
-  if (!deletedTicket) {
-    throw new Error("Không tìm thấy vé để xóa");
-  }
-  return deletedTicket;
-};
+export const updateTicket = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const updatedTicket = await ticketService.updateTicket(id, req.body);
+  return sendSuccess(res, "Cập nhật phòng chiếu thành công", updatedTheater);
+});
 
-// 6. Hủy vé (Cập nhật trạng thái vé thành đã hủy)
-export const cancelTicket = async (ticketId) => {
-  const ticket = await Ticket.findById(ticketId);
-  if (!ticket) {
-    throw new Error("Không tìm thấy vé cần hủy");
-  }
-  
-  ticket.status = "CANCELLED";
-  await ticket.save();
+export const deleteTicket = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await ticketService.deleteTicket(id);
+  return sendSuccess(res, "Ticket deleted successfully");
+});
 
-  return ticket;
-};
+export const cancelTicket = asyncHandler(async (req, res) => {
+  const ticketId = req.body_id;
+  const result = await ticketService.cancelTicket(ticketId);
+  return sendSuccess(res, "Hủy vé thành công", result);
+});
