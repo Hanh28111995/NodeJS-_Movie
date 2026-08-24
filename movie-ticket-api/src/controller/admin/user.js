@@ -105,7 +105,7 @@ export const updateUser = asyncHandler(async (req, res) => {
 
 // 5. Xóa user
 export const deleteUser = asyncHandler(async (req, res) => {
-  const deleted = await User.findByIdAndDelete(req.params.userid).lean();
+  const deleted = await User.findByIdAndDelete(req.params.userid);
   if (!deleted) return sendError(res, "User not found", 404);
   return sendSuccess(res, "User deleted successfully");
 });
