@@ -10,7 +10,7 @@ import {
   deleteFromFirebase,
 } from "../../helper/firebaseStorage.js";
 import ScheduleConfig from "../../model/scheduleConfigModel.js";
-import redisClient from "../../config/Redis.js"; 
+import redisClient from "../../config/Redis.js";
 import Showtime from "../../model/showtimeModel.js";
 
 // Helper xóa cache theo pattern (wildcard)
@@ -19,7 +19,7 @@ const clearMovieCaches = async () => {
     // Xóa các key cố định và các key tìm kiếm động bắt đầu bằng tiền tố liên quan đến phim
     await redisClient.del("cache:showingMovies").catch(() => {});
     await redisClient.del("cache:comingMovies").catch(() => {});
-    
+
     // Quét và xóa các key search động (ví dụ cache:movie:all:*)
     const keys = await redisClient.keys("cache:movie:all:*");
     if (keys.length > 0) {
@@ -36,7 +36,7 @@ export const getAllMovies = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const [movies, total] = await Promise.all([
-    Movie.find().sort({ title: 1 }).skip(skip).limit(limit).lean(),
+    Movie.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Movie.countDocuments(),
   ]);
 
@@ -88,7 +88,7 @@ export const addMovie = asyncHandler(async (req, res) => {
 });
 
 export const updateMovie = asyncHandler(async (req, res) => {
-  const movieid  = req.body.id_movie;
+  const movieid = req.body.id_movie;
   const movie = await Movie.findOne({ _id: movieid });
   if (!movie) return sendError(res, "Movie not found");
 
@@ -118,7 +118,7 @@ export const updateMovie = asyncHandler(async (req, res) => {
 export const deleteMovie = asyncHandler(async (req, res) => {
   const { movieid } = req.params;
   const movie = await Movie.findOne({ _id: movieid });
-  if (!movie) return sendError(res, "Movie not found");  
+  if (!movie) return sendError(res, "Movie not found");
   if (movie.banner) {
     try {
       await deleteFromFirebase(movie.banner);
@@ -137,9 +137,9 @@ export const deleteMovie = asyncHandler(async (req, res) => {
       { $pull: { movie_ids: movie._id } },
     );
   }
-  
+
   await Showtime.deleteMany({ id_movie: movie._id });
-  
+
   await Movie.findOneAndDelete({ _id: movieid });
 
   await clearMovieCaches();
