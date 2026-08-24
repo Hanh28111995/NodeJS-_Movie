@@ -100,7 +100,7 @@ export const updateMovie = asyncHandler(async (req, res) => {
   }
 
   const updatedMovie = await Movie.findOneAndUpdate(
-    { id_movie: movieid },
+    { _id: movieid },
     updateData,
     { new: true },
   );
