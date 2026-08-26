@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import { sendError } from "../helper/client.js";
 import redisClient from "../config/Redis.js";
@@ -8,19 +8,21 @@ import redisClient from "../config/Redis.js";
  */
 export const bookingLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 phút
-  max: 5,                  // Tối đa 5 lần gọi
+  max: 5,                   // Tối đa 5 lần gọi
   standardHeaders: true,   
   legacyHeaders: false,    
-  // 👉 Thêm keyGenerator để đọc IP chuẩn từ proxy của Vercel
-  keyGenerator: (req) => {
-    return req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  
+  // 👉 Dùng ipKeyGenerator chuẩn để xử lý IPv4, IPv6 và proxy an toàn
+  keyGenerator: (req, res) => {
+    return ipKeyGenerator(req, res);
   },
+
   store: new RedisStore({
     sendCommand: (...args) => redisClient.sendCommand(args),
     prefix: "rl:booking:",   
   }),
   handler: (req, res) => {
-    return sendError(res, "Bạn thao tác quá nhanh, vui lòng thử lại sau 1 phút!", 429);
+    return sendError(res, "Too many requests, please try again after 1 minute!", 429);
   },
 });
 
@@ -32,15 +34,17 @@ export const globalLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  // 👉 Thêm keyGenerator cho global limiter
-  keyGenerator: (req) => {
-    return req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  
+  // 👉 Dùng ipKeyGenerator chuẩn ở đây luôn
+  keyGenerator: (req, res) => {
+    return ipKeyGenerator(req, res);
   },
+
   store: new RedisStore({
     sendCommand: (...args) => redisClient.sendCommand(args),
     prefix: "rl:global:",
   }),
   handler: (req, res) => {
-    return sendError(res, "Quá nhiều yêu cầu từ IP của bạn, vui lòng chầm chậm lại.", 429);
+    return sendError(res, "Too many requests from your IP, please slow down.", 429);
   },
 });
