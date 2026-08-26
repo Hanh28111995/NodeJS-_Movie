@@ -92,8 +92,7 @@ export const submitNewTicket = (data) => {
 export const submitNewUser = (data) => {
   const error = new Error();
   error
-    .isRequired(data.username, "username")
-    .isRequired(data.password, "password")
+    .isRequired(data.username, "username")    
     .isRequired(data.email, "email")
     .isRequired(data.role, "role");
   return error.get();
