@@ -8,6 +8,7 @@ import {
 import express from "express";
 import { handleUploadPromotion } from "../../middleware/upload.js";
 import { submitNewPromotion } from "../../validation/index.js";
+import { validateBody } from "../../middleware/validation.js";
 
 const adminPromotionRouter = express.Router();
 
