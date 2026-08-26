@@ -6,7 +6,7 @@ class TheaterRepository {
   }
 
   async findById(id) {
-    return await Theater.findById(id).populate("cinema").populate("seats.seatType").lean();
+    return await Theater.findById(id).populate("seats.seatType").lean();
   }
 
   async findByIdRaw(id) {
