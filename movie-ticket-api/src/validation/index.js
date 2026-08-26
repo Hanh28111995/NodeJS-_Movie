@@ -12,8 +12,7 @@ export const submitNewShopProduct = (data) => {
 export const submitNewPromotion = (data) => {
   const error = new Error();
   error
-    .isRequired(data.title, "title")
-    .isRequired(data.banner, "banner")
+    .isRequired(data.title, "title")    
     .isRequired(data.content, "content")
     .isRequired(data.startDate, "startDate")
     .isRequired(data.endDate, "endDate")    
