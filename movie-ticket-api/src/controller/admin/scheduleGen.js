@@ -1,6 +1,6 @@
 import asyncHandler from "../../util/asyncHandler.js";
 import { sendSuccess, sendError } from "../../helper/client.js";
-import * as scheduleGenService from "../../service/scheduleGenService.js";
+import scheduleGenService from "../../service/scheduleGenService.js";
 
 export const getSchedulePlan = asyncHandler(async (req, res) => {
   const schedule = await scheduleGenService.getConfig();
