@@ -75,7 +75,6 @@ export const submitNewMovie = (data) => {
     .isRequired(data.releaseDate, "releaseDate")
     .isRequired(data.genre, "genre")
     .isRequired(data.duration, "duration")
-    .isRequired(data.file, "file");
   return error.get();
 };
 
