@@ -8,6 +8,7 @@ import {
 import express from "express";
 import { handleUploadBanner } from "../../middleware/upload.js";
 import { submitNewBanner } from "../../validation/index.js";
+import { validateBody } from "../../middleware/validation.js";
 
 const adminBannerRouter = express.Router();
 
