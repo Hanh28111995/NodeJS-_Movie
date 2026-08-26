@@ -13,10 +13,7 @@ class UserService {
     if (keyword) {
       const regex = { $regex: keyword, $options: "i" };
       query = {
-        $or: [
-          { email: regex },
-          { userphone: regex },
-        ],
+        $or: [{ email: regex }, { userphone: regex }],
       };
     }
 
@@ -46,10 +43,12 @@ class UserService {
     return user;
   }
 
-  async addNewUser(bodyData) {    
+  async addNewUser(bodyData) {
     const { username, password, email, role } = bodyData;
 
-    const existing = await userRepository.findOne({ $or: [{ username }, { email }] });
+    const existing = await userRepository.findOne({
+      $or: [{ username }, { email }],
+    });
     if (existing) {
       const field = existing.username === username ? "Username" : "Email";
       const error = new Error(`${field} already exists`);
@@ -74,7 +73,8 @@ class UserService {
     };
   }
 
-  async updateUser(userid, bodyData) {
+  async updateUser(bodyData) {
+    const userid = bodyData._id;
     const updated = await userRepository.updateById(userid, bodyData);
     if (!updated) {
       const error = new Error("User not found");

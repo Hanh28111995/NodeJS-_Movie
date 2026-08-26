@@ -20,7 +20,7 @@ adminUserRouter.get("/:userid", getUserById);
 
 adminUserRouter.post("/add", validateBody(submitNewUser), addNewUser);
 
-adminUserRouter.put("/update/:userid", validateBody(submitNewUser), updateUser);
+adminUserRouter.put("/update", validateBody(submitNewUser), updateUser);
 
 adminUserRouter.delete("/delete/:userid", deleteUser);
 

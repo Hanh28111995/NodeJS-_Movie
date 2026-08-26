@@ -38,7 +38,7 @@ export const addNewUser = asyncHandler(async (req, res) => {
 
 export const updateUser = asyncHandler(async (req, res) => {
   try {
-    const updated = await userService.updateUser(req.params.userid, req.body);
+    const updated = await userService.updateUser( req.body);
     return sendSuccess(res, "User updated successfully", updated);
   } catch (error) {
     if (error.statusCode === 404) {
