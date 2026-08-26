@@ -4,9 +4,8 @@ class TicketRepository {
   async findAll(query, skip, limit) {
     const [tickets, total] = await Promise.all([
       InforTicket.find(query)
-        .populate("showtime")
-        .populate("user")
-        .populate("seats.seatType")
+        .populate({ path: "showtime_id", strictPopulate: false }) // Sửa thành showtime_id và thêm strictPopulate
+        .populate({ path: "user_id", strictPopulate: false })     // Sửa thành user_id
         .skip(skip)
         .limit(limit)
         .sort({ createdAt: -1 })
@@ -17,10 +16,9 @@ class TicketRepository {
   }
 
   async findById(id) {
-    return await Ticket.findById(id)
-      .populate("showtime")
-      .populate("user")
-      .populate("seats.seatType")
+    return await InforTicket.findById(id) // Sửa Ticket thành InforTicket
+      .populate({ path: "showtime_id", strictPopulate: false })
+      .populate({ path: "user_id", strictPopulate: false })
       .lean();
   }
 
@@ -34,9 +32,8 @@ class TicketRepository {
 
   async updateById(id, updateData) {
     return await InforTicket.findByIdAndUpdate(id, updateData, { new: true })
-      .populate("showtime")
-      .populate("user")
-      .populate("seats.seatType")
+      .populate({ path: "showtime_id", strictPopulate: false })
+      .populate({ path: "user_id", strictPopulate: false })
       .lean();
   }
 
@@ -49,6 +46,7 @@ class TicketRepository {
     return await InforTicket.find()
       .populate({
         path: "user_id",
+        strictPopulate: false,
         match: {
           $or: [
             { email: { $regex: keywordRegex, $options: "i" } },
