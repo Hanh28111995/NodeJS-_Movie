@@ -1,6 +1,6 @@
-import { sendSuccess } from "../../helper/client.js";
-import * as ticketService from "../../service/ticketService.js";
+import { sendSuccess, sendError } from "../../helper/client.js";
 import asyncHandler from "../../util/asyncHandler.js";
+import ticketService from "../../service/admin/ticketService.js";
 
 export const getAllTickets = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, paymentStatus } = req.query;
@@ -12,10 +12,18 @@ export const getAllTickets = asyncHandler(async (req, res) => {
   return sendSuccess(res, "All tickets retrieved successfully", result);
 });
 
+
 export const getTicketById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const ticket = await ticketService.getTicketById(id);
-  return sendSuccess(res, "Ticket found", { ticket });
+  try {
+    const { id } = req.params;
+    const ticket = await ticketService.getTicketById(id);
+    return sendSuccess(res, "Ticket found", { ticket });
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });
 
 export const addTicket = asyncHandler(async (req, res) => {
@@ -24,19 +32,40 @@ export const addTicket = asyncHandler(async (req, res) => {
 });
 
 export const updateTicket = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const updatedTicket = await ticketService.updateTicket(id, req.body);
-  return sendSuccess(res, "Cập nhật phòng chiếu thành công", updatedTheater);
+  try {
+    const { id } = req.params;
+    const updatedTicket = await ticketService.updateTicket(id, req.body);
+    return sendSuccess(res, "Ticket updated successfully", updatedTicket);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });
 
 export const deleteTicket = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  await ticketService.deleteTicket(id);
-  return sendSuccess(res, "Ticket deleted successfully");
+  try {
+    const { id } = req.params;
+    await ticketService.deleteTicket(id);
+    return sendSuccess(res, "Ticket deleted successfully");
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });
 
 export const cancelTicket = asyncHandler(async (req, res) => {
-  const ticketId = req.body_id;
-  const result = await ticketService.cancelTicket(ticketId);
-  return sendSuccess(res, "Hủy vé thành công", result);
+  try {
+    const ticketId = req.body.id || req.body.ticketId;
+    const result = await ticketService.cancelTicket(ticketId);
+    return sendSuccess(res, "Ticket cancelled successfully", result);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });

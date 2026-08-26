@@ -1,90 +1,66 @@
-import {
-  sendSuccess,
-  sendError,
-  sendServerError,
-} from "../../helper/client.js";
-import Promotion from "../../model/promotionModel.js";
+import { sendSuccess, sendError } from "../../helper/client.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
-import redisClient from "../../config/Redis.js";
- // 1. Import redisClient
+import promotionService from "../../service/admin/promotionService.js";
 
 export const getAllPromotions = asyncHandler(async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = Math.min(100, parseInt(req.query.limit) || 10);
-  const skip = (page - 1) * limit;
-
-  const [promotions, total] = await Promise.all([   
-    Promotion.find().sort({ createdAt: 1 }).skip(skip).limit(limit).lean(),
-    Promotion.countDocuments(),
-  ]);
-
-  return sendSuccess(res, "All promotions retrieved successfully", {
-    promotions,
-    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
-  });
+  const result = await promotionService.getAllPromotions(req.query);
+  return sendSuccess(res, "All promotions retrieved successfully", result);
 });
 
 export const getPromotionDetail = asyncHandler(async (req, res) => {
-  const { promotionid } = req.params;
-  const promotion = await Promotion.findById(promotionid).lean();
-  if (!promotion) return sendError(res, "Promotion not found", 404);
-  return sendSuccess(res, "Promotion retrieved successfully", promotion);
+  try {
+    const { promotionid } = req.params;
+    const promotion = await promotionService.getPromotionById(promotionid);
+    return sendSuccess(res, "Promotion retrieved successfully", promotion);
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return sendError(res, error.message, 404);
+    }
+    throw error;
+  }
 });
 
 export const addPromotion = asyncHandler(async (req, res) => {
-  if (!req.file) return sendError(res, "Banner image is required");
-
-  const { publicUrl: bannerUrl } = await uploadToFirebase(req.file, "promotions");
-  const newPromotion = await Promotion.create({ ...req.body, banner: bannerUrl });
-
-  // 2. Xóa cache khuyến mãi ngay lập tức khi thêm mới
-  await redisClient.del("cache:promotions").catch(console.error);
-
-  return sendSuccess(res, "Promotion added successfully", newPromotion);
+  try {
+    const newPromotion = await promotionService.addPromotion(
+      req.body,
+      req.file,
+    );
+    return sendSuccess(res, "Promotion added successfully", newPromotion);
+  } catch (error) {
+    if (error.statusCode === 400) {
+      return sendError(res, error.message, 400);
+    }
+    throw error;
+  }
 });
 
 export const updatePromotion = asyncHandler(async (req, res) => {
-  const { promotionid } = req.params;
-  const promotion = await Promotion.findOne({ _id: promotionid });
-  if (!promotion) return sendError(res, "Promotion not found");
-
-  const updateData = { ...req.body };
-
-  if (req.file) {
-    const { publicUrl } = await uploadToFirebase(req.file, "promotions");
-    updateData.banner = publicUrl;
+  try {
+    const { promotionid } = req.params;
+    const updatedPromotion = await promotionService.updatePromotion(
+      promotionid,
+      req.body,
+      req.file,
+    );
+    return sendSuccess(res, "Promotion updated successfully", updatedPromotion);
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return sendError(res, error.message, 404);
+    }
+    throw error;
   }
-
-  const updatedPromotion = await Promotion.findOneAndUpdate(
-    { _id: promotionid },
-    updateData,
-    { new: true },
-  );
-
-  if (req.file && promotion.banner) {
-    await deleteFromFirebase(promotion.banner);
-  }
-
-  // 3. Xóa cache khuyến mãi ngay lập tức khi cập nhật
-  await redisClient.del("cache:promotions").catch(console.error);
-
-  return sendSuccess(res, "Promotion updated successfully", updatedPromotion);
 });
 
 export const deletePromotion = asyncHandler(async (req, res) => {
-  const { promotionid } = req.params;
-  const promotion = await Promotion.findOne({ _id: promotionid });
-  if (!promotion) return sendError(res, "Promotion not found");
-
-  if (promotion.banner) {
-    await deleteFromFirebase(promotion.banner);
+  try {
+    const { promotionid } = req.params;
+    await promotionService.deletePromotion(promotionid);
+    return sendSuccess(res, "Promotion deleted successfully");
+  } catch (error) {
+    if (error.statusCode === 404) {
+      return sendError(res, error.message, 404);
+    }
+    throw error;
   }
-
-  await Promotion.findOneAndDelete({ _id: promotionid });
-
-  // 4. Xóa cache khuyến mãi ngay lập tức khi xóa
-  await redisClient.del("cache:promotions").catch(console.error);
-
-  return sendSuccess(res, "Promotion deleted successfully");
 });

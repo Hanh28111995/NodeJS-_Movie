@@ -1,63 +1,24 @@
-import { sendError, sendServerError, sendSuccess } from "../../helper/client.js";
-import SeatType from "../../model/seatTypeModel.js";
-import { submitSeatType } from "../../validation/index.js";
+import { sendSuccess, sendError } from "../../helper/client.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import redisClient from "../../config/Redis.js"; // 1. Import redisClient
+import seatTypeService from "../../service/admin/seatTypeService.js";
 
 export const getSeatType = asyncHandler(async (req, res) => {
-  const seatTypes = await SeatType.find().lean();
-  return sendSuccess(res, "All seat types retrieved successfully", { seatTypes });
+  const result = await seatTypeService.getAllSeatTypes();
+  return sendSuccess(res, "All seat types retrieved successfully", result);
 });
 
-export const addSeatType = async (req, res) => {
-  try {
-    const validate = submitSeatType(req.body);
-    if (validate)
-      return sendError(res, "required fields are missing or invalid");
-    const newSeatType = await SeatType.create(req.body);
+export const addSeatType = asyncHandler(async (req, res) => {
+  const newSeatType = await seatTypeService.addSeatType(req.body);
+  return sendSuccess(res, "SeatType added successfully", newSeatType);
+});
 
-    // 2. Xóa cache loại ghế ngay lập tức khi thêm mới
-    await redisClient.del("cache:seatTypes").catch(console.error);
+export const updateSeatType = asyncHandler(async (req, res) => {
+  const updatedSeatType = await seatTypeService.updateSeatType(req.body);
+  return sendSuccess(res, "SeatType updated successfully", updatedSeatType);
+});
 
-    return sendSuccess(res, "SeatType added successfully", newSeatType);
-  } catch (err) {
-    console.log(err);
-    return sendServerError(res);
-  }
-};
-
-export const updateSeatType = async (req, res) => {
-  try {
-    const { _id, ...updateData } = req.body;
-    if (!_id) return sendError(res, "Thiếu _id", 400);
-    const updatedSeatType = await SeatType.findByIdAndUpdate(_id, updateData, { new: true });
-    if (!updatedSeatType) return sendError(res, "SeatType not found");
-
-    // 3. Xóa cache loại ghế ngay lập tức khi cập nhật
-    await redisClient.del("cache:seatTypes").catch(console.error);
-
-    return sendSuccess(res, "SeatType updated successfully", updatedSeatType);
-  } catch (err) {
-    console.log(err);
-    return sendServerError(res);
-  }
-};
-
-export const deleteSeatType = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const newSeatType = await SeatType.findById(id);
-    if (!newSeatType) {
-      return sendError(res, "SeatType not found");
-    }
-    const deletedSeatType = await SeatType.findByIdAndDelete(id);
-
-    // 4. Xóa cache loại ghế ngay lập tức khi xóa
-    await redisClient.del("cache:seatTypes").catch(console.error);
-
-    return sendSuccess(res, "Movie deleted successfully");
-  } catch (err) {
-    console.log(err);
-    sendServerError(res);
-  }
-};
+export const deleteSeatType = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await seatTypeService.deleteSeatType(id);
+  return sendSuccess(res, "SeatType deleted successfully");
+});

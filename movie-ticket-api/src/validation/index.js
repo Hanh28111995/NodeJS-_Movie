@@ -1,6 +1,32 @@
 import Error from "../helper/error.js";
 
+export const submitNewShopProduct = (data) => {
+  const error = new Error();
+  error
+    .isRequired(data.title, "title")
+    .isRequired(data.banner, "banner")
+    .isRequired(data.price, "price");
+  return error.get();
+};
 
+export const submitNewPromotion = (data) => {
+  const error = new Error();
+  error
+    .isRequired(data.title, "title")
+    .isRequired(data.banner, "banner")
+    .isRequired(data.content, "content")
+    .isRequired(data.startDate, "startDate")
+    .isRequired(data.endDate, "endDate")    
+  return error.get();
+};
+
+export const submitNewBanner = (data) => {
+  const error = new Error();
+  error
+    .isRequired(data.url, "url")
+    .isRequired(data.movie_id, "movie_id")    
+  return error.get();
+};
 
 export const submitNewCinema = (data) => {
   const error = new Error();
@@ -48,7 +74,8 @@ export const submitNewMovie = (data) => {
     .isRequired(data.director, "director")
     .isRequired(data.releaseDate, "releaseDate")
     .isRequired(data.genre, "genre")
-    .isRequired(data.duration, "duration");
+    .isRequired(data.duration, "duration")
+    .isRequired(data.banner, "banner");
   return error.get();
 };
 

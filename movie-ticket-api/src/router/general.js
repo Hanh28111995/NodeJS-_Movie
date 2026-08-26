@@ -10,6 +10,8 @@ import asyncHandler from "../util/asyncHandler.js";
 import Theater from "../model/theaterModel.js";
 import SeatType from "../model/seatTypeModel.js";
 import { cacheMiddleware } from "../middleware/redisCache.js";
+import { verifyToken } from "../middleware/index.js";
+import NotificationRouter from "./notification.js";
 
 const generalRouter = express.Router();
 
@@ -272,5 +274,8 @@ generalRouter.get("/shop/:id", asyncHandler(async (req, res) => {
   if (!shop) return sendError(res, "Shop product not found", 404);
   return sendSuccess(res, "Shop product retrieved successfully", shop);
 }))
+
+
+generalRouter.use('/notifications', verifyToken, NotificationRouter)
 
 export default generalRouter;

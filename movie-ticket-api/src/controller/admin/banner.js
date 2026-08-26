@@ -1,104 +1,92 @@
-import {
-  sendSuccess,
-  sendError,
-  sendServerError,
-} from "../../helper/client.js";
-import Banner from "../../model/bannerModel.js";
-import Movie from "../../model/movieModel.js";
+import { sendSuccess, sendError } from "../../helper/client.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import {
-  uploadToFirebase,
-  deleteFromFirebase,
-} from "../../helper/firebaseStorage.js";
-import redisClient from "../../config/Redis.js"; // 1. Import redisClient
+import bannerService from "../../service/admin/bannerService.js";
 
+/**
+ * @desc Lấy toàn bộ danh sách banner (không phân trang, có Redis cache)
+ */
 export const getAllBanners = asyncHandler(async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = Math.min(100, parseInt(req.query.limit) || 10);
-  const skip = (page - 1) * limit;
-
-  const [banners, total] = await Promise.all([
-    Banner.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    Banner.countDocuments(),
-  ]);
-
-  return sendSuccess(res, "All banners retrieved successfully", {
-    banners,
-    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
-  });
+  const result = await bannerService.getAllBanners();
+  return sendSuccess(res, "All banners retrieved successfully", result);
 });
 
-export const addBanner = asyncHandler(async (req, res) => {
-  const { movie_id, highlight } = req.body;
-  if (!movie_id) return sendError(res, "movie_id is required");
-
-  const movie = await Movie.findOne({ _id: movie_id });
-  if (!movie) return sendError(res, "Movie not found");
-
-  if (!req.file) return sendError(res, "Banner image is required");
-
-  const { publicUrl } = await uploadToFirebase(req.file, "banner");
-  const newBanner = await Banner.create({ url: publicUrl, movie_id, highlight });
-
-  // 2. Xóa cache banner ngay lập tức khi thêm mới
-  await redisClient.del("cache:banners").catch(console.error);
-
-  return sendSuccess(res, "Banner added successfully", newBanner);
-});
-
+/**
+ * @desc Lấy chi tiết một banner theo ID
+ */
 export const getBannerById = asyncHandler(async (req, res) => {
-  const { bannerid } = req.params;
-  const banner = await Banner.findById(bannerid).lean();
-  if (!banner) return sendError(res, "Banner not found");
-  return sendSuccess(res, "Banner retrieved successfully", banner);
+  try {
+    const { bannerid } = req.params;
+    const banner = await bannerService.getBannerById(bannerid);
+    return sendSuccess(res, "Banner retrieved successfully", banner);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });
 
+/**
+ * @desc Thêm mới một banner (kiểm tra movie, upload Firebase, xóa cache Redis)
+ */
+export const addBanner = asyncHandler(async (req, res) => {
+  try {
+    const { movie_id, highlight } = req.body;
+
+    // Gọi sang Service xử lý logic nghiệp vụ
+    const newBanner = await bannerService.addBanner(
+      { movie_id, highlight },
+      req.file,
+    );
+
+    return sendSuccess(res, "Banner added successfully", newBanner);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
+});
+
+/**
+ * @desc Cập nhật thông tin banner (hỗ trợ đổi ảnh Firebase và đồng bộ Redis cache)
+ */
 export const updateBanner = asyncHandler(async (req, res) => {
-  const { bannerid } = req.params;
-  const banner = await Banner.findById(bannerid);
-  if (!banner) return sendError(res, "Banner not found");
+  try {
+    const { bannerid } = req.params;
+    const { movie_id, highlight } = req.body;
 
-  const { movie_id } = req.body;
-  const updateData = {};
+    // Gọi sang Service xử lý cập nhật
+    const updatedBanner = await bannerService.updateBanner(
+      bannerid,
+      { movie_id, highlight },
+      req.file,
+    );
 
-  if (movie_id) {
-    const movie = await Movie.findOne({ _id: movie_id });
-    if (!movie) return sendError(res, "Movie not found");
-    updateData.movie_id = movie_id;
+    return sendSuccess(res, "Banner updated successfully", updatedBanner);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
   }
-
-  if (req.file) {
-    const { publicUrl } = await uploadToFirebase(req.file, "banner");
-    updateData.url = publicUrl;
-  }
-
-  const updatedBanner = await Banner.findByIdAndUpdate(bannerid, updateData, {
-    new: true,
-  });
-
-  if (req.file && banner.url) {
-    await deleteFromFirebase(banner.url);
-  }
-
-  // 3. Xóa cache banner ngay lập tức khi cập nhật
-  await redisClient.del("cache:banners").catch(console.error);
-
-  return sendSuccess(res, "Banner updated successfully", updatedBanner);
 });
 
+/**
+ * @desc Xóa banner (xóa ảnh cũ trên Firebase và dọn dẹp cache Redis)
+ */
 export const deleteBanner = asyncHandler(async (req, res) => {
-  const { bannerid } = req.params;
-  const banner = await Banner.findById(bannerid);
-  if (!banner) return sendError(res, "Banner not found");
+  try {
+    const { bannerid } = req.params;
 
-  if (banner.url) {
-    await deleteFromFirebase(banner.url);
+    // Gọi sang Service xử lý xóa
+    await bannerService.deleteBanner(bannerid);
+
+    return sendSuccess(res, "Banner deleted successfully");
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
   }
-
-  await Banner.findByIdAndDelete(bannerid);
-
-  // 4. Xóa cache banner ngay lập tức khi xóa
-  await redisClient.del("cache:banners").catch(console.error);
-
-  return sendSuccess(res, "Banner deleted successfully");
 });

@@ -2,6 +2,7 @@ import {
   addMovie,
   deleteMovie,
   getAllMovies,
+  getMovieDetail,
   searchMovies,
   updateMovie,
 } from "../../controller/admin/movie.js";
@@ -13,7 +14,10 @@ import { handleUploadBanner } from "../../middleware/upload.js";
 const adminMoviesRouter = express.Router();
 
 adminMoviesRouter.get("/allMovies", getAllMovies);
+
 adminMoviesRouter.get("/search", searchMovies);
+
+adminMoviesRouter.get("/:movieid", getMovieDetail);
 
 adminMoviesRouter.post("/add", handleUploadBanner, validateBody(submitNewMovie), addMovie);
 

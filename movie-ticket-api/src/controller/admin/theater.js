@@ -1,64 +1,52 @@
 import { sendSuccess, sendError } from "../../helper/client.js";
-import Theater from "../../model/theaterModel.js";
-import { generateSeats } from "../../helper/generateSeats.js";
 import asyncHandler from "../../util/asyncHandler.js";
-import redisClient from "../../config/Redis.js"; // 1. Import redisClient
-
-// Helper xóa cache liên quan đến phòng chiếu và rạp
-const clearTheaterCaches = async () => {
-  try {
-    await redisClient.del("cache:theaterByCinema").catch(() => {});
-    await redisClient.del("cache:cinemas").catch(() => {});
-    await redisClient.del("cache:locations").catch(() => {});
-  } catch (error) {
-    console.error("Error clearing theater cache:", error);
-  }
-};
+import theaterService from "../../service/admin/theaterService.js";
 
 export const getAllTheaters = asyncHandler(async (req, res) => {
-  const theaters = await Theater.find().populate("cinemaName").lean();
-  return sendSuccess(res, "Lấy danh sách phòng chiếu thành công", { theaters });
+  const result = await theaterService.getAllTheaters();
+  return sendSuccess(res, "Theaters retrieved successfully", result);
 });
 
 export const getTheaterById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const theater = await Theater.findById(id).populate("cinema").populate("seats.seatType");
-  if (!theater) return sendError(res, "Không tìm thấy phòng chiếu", 404);
-  return sendSuccess(res, "Lấy thông tin phòng chiếu thành công", { theater });
+  try {
+    const { id } = req.params;
+    const result = await theaterService.getTheaterById(id);
+    return sendSuccess(res, "Theater retrieved successfully", result);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });
 
 export const addTheater = asyncHandler(async (req, res) => {
-  const { totalSeat } = req.body;
-  
-  // Tự động tạo danh sách ghế nếu có thông số rows và cols
-  if (totalSeat && totalSeat.rows && totalSeat.cols) {
-    req.body.seats = await generateSeats(totalSeat.rows, totalSeat.cols);
-  }
-
-  const newTheater = await Theater.create(req.body);
-
-  // 2. Xóa cache khi thêm phòng chiếu mới
-  await clearTheaterCaches();
-
-  return sendSuccess(res, "Thêm phòng chiếu thành công", newTheater);
+  const newTheater = await theaterService.addTheater(req.body);
+  return sendSuccess(res, "Theater added successfully", newTheater);
 });
 
 export const updateTheater = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const updatedTheater = await Theater.findByIdAndUpdate(id, req.body, { new: true });
-
-  // 3. Xóa cache khi cập nhật phòng chiếu
-  await clearTheaterCaches();
-
-  return sendSuccess(res, "Cập nhật phòng chiếu thành công", updatedTheater);
+  try {
+    const { id } = req.params;
+    const updatedTheater = await theaterService.updateTheater(id, req.body);
+    return sendSuccess(res, "Theater updated successfully", updatedTheater);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });
 
 export const deleteTheater = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  await Theater.findByIdAndDelete(id);
-
-  // 4. Xóa cache khi xóa phòng chiếu
-  await clearTheaterCaches();
-
-  return sendSuccess(res, "Xóa phòng chiếu thành công");
+  try {
+    const { id } = req.params;
+    await theaterService.deleteTheater(id);
+    return sendSuccess(res, "Theater deleted successfully");
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
 });
