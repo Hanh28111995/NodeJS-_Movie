@@ -20,7 +20,7 @@ const createHandleUpload = (maxSizeMB) => {
   });
 
   return (req, res, next) => {
-    uploader.any()(req, res, (err) => {
+    uploader.single()(req, res, (err) => {
       if (err) {
         console.log("❌ Lỗi upload:", err.message);
         // Kiểm tra lỗi nếu file quá lớn
