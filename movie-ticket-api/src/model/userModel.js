@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema(
       default: "customer",
     },
     userphone: {
-      type: String, // Đổi sang String để linh hoạt hơn
+      type: String, 
       required: false,
       default: "",
     },
@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: false, // Optional for OAuth
+      required: false, 
     },
     avatar: {
       type: String,
@@ -48,7 +48,7 @@ const userSchema = new mongoose.Schema(
     verifyToken: {
       type: String,
       trim: true,
-      default: null, // chưa cần nhập
+      default: null,
     },
     createdAt: {
       type: Date,
