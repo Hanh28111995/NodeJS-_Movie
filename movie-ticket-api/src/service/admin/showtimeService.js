@@ -5,7 +5,7 @@ import SeatType from "../../model/seatTypeModel.js";
 
 class ShowtimeService {
   // ... trong Service class
- async createOneShowtime({ theaterId, movieId, startTime, cinemaId }) {
+ async createOneShowtime({ theaterId, movieId, startTime, cinema }) {
     if (!theaterId || !movieId || !startTime) {
         const error = new Error("Theater, movie and start time are required");
         error.statusCode = 400;
@@ -28,7 +28,7 @@ class ShowtimeService {
         throw error;
     }
 
-    const resolvedCinemaId = cinemaId || theaterDoc.cinema;
+    const resolvedCinemaId = cinema;
 
     // 3. Lấy danh sách ID loại ghế từ phòng chiếu này
     const seatTypeIds = [
