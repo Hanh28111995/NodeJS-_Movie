@@ -5,80 +5,69 @@ import SeatType from "../../model/seatTypeModel.js";
 
 class ShowtimeService {
   // ... trong Service class
-  async createOneShowtime({ theaterId, movieId, startTime, cinemaId }) {
+ async createOneShowtime({ theaterId, movieId, startTime, cinemaId }) {
     if (!theaterId || !movieId || !startTime) {
-      const error = new Error("Theater, movie and start time are required");
-      error.statusCode = 400;
-      throw error;
+        const error = new Error("Theater, movie and start time are required");
+        error.statusCode = 400;
+        throw error;
     }
 
     // 1. Kiểm tra phim có tồn tại không
     const movie = await showtimeRepository.findMovieById(movieId);
     if (!movie) {
-      const error = new Error("Movie not found");
-      error.statusCode = 404;
-      throw error;
+        const error = new Error("Movie not found");
+        error.statusCode = 404;
+        throw error;
     }
 
-    // 2. Lấy thông tin phòng chiếu để lấy danh sách ghế và cinema tương ứng
-    const theaterDoc = (await theaterRepository.findById)
-      ? await theaterRepository.findById(theaterId)
-      : await Theater.findById(theaterId).lean();
+    // 2. Lấy thông tin phòng chiếu (Dùng theaterId đơn lẻ thay vì theaterDocs)
+    const theaterDoc = await theaterRepository.findById(theaterId);
     if (!theaterDoc) {
-      const error = new Error("Theater not found");
-      error.statusCode = 404;
-      throw error;
+        const error = new Error("Theater not found");
+        error.statusCode = 404;
+        throw error;
     }
 
-    const resolvedCinemaId = cinemaId || theaterDoc.cinema; // Hoặc lấy trực tiếp từ theaterDoc tùy cấu trúc DB của bạn
+    const resolvedCinemaId = cinemaId || theaterDoc.cinema;
 
-    // 3. Lấy thông tin loại ghế (giá, màu sắc) để map vào template ghế
+    // 3. Lấy danh sách ID loại ghế từ phòng chiếu này
     const seatTypeIds = [
       ...new Set(
-        theaterDocs
-          .flatMap((t) =>
-            (t.seats || []).map((s) => {
-              // Xử lý an toàn: nếu s.seatType là object (đã populate), lấy s.seatType._id, ngược lại lấy chính nó
-              const id = s.seatType?._id || s.seatType;
-              return id?.toString();
-            }),
-          )
-          .filter(Boolean),
+        (theaterDoc.seats || []).map((s) => {
+          const id = s.seatType?._id || s.seatType;
+          return id?.toString();
+        }).filter(Boolean)
       ),
     ];
-    const seatTypes = (await seatTypeRepository.findByIds)
-      ? await seatTypeRepository.findByIds(seatTypeIds)
-      : await SeatType.find({ _id: { $in: seatTypeIds } })
-          .select("_id price color")
-          .lean();
 
-    const seatTypeMap = Object.fromEntries(
-      seatTypes.map((st) => [st._id.toString(), st]),
-    );
+    // 4. Lấy thông tin giá, màu sắc của loại ghế qua Repository
+    const seatTypes = await seatTypeRepository.findByIds(seatTypeIds);
+    const seatTypeMap = Object.fromEntries(seatTypes.map((st) => [st._id.toString(), st]));
 
-    // 4. Build danh sách ghế (seats template)
+    // 5. Tạo template ghế có đầy đủ giá và màu
     const seats = (theaterDoc.seats || []).map((s) => {
-      const st = seatTypeMap[s.seatType?.toString()];
-      return {
-        seatNumber: s.seatNumber,
-        seatType: s.seatType,
-        price: st?.price ?? 0,
-        color: st?.color ?? "#cccccc",
-        isBooked: false,
-      };
+        const seatTypeIdStr = (s.seatType?._id || s.seatType)?.toString();
+        const st = seatTypeMap[seatTypeIdStr];
+        return {
+            seatNumber: s.seatNumber,
+            seatType: seatTypeIdStr,
+            price: st?.price ?? 0,
+            color: st?.color ?? "#cccccc",
+            isBooked: false,
+        };
     });
 
-    // 5. Tạo suất chiếu mới với đầy đủ các trường yêu cầu
+    // 6. Lưu suất chiếu xuống database
     const showtime = await showtimeRepository.create({
-      theater: theaterId,
-      id_movie: movieId,
-      cinema: resolvedCinemaId,
-      startTime,
-      seats, // Đã có mảng seats đầy đủ
+        theater: theaterId,
+        id_movie: movieId,
+        cinema: resolvedCinemaId,
+        startTime,
+        seats,
     });
 
     return showtime;
-  }
+}
 
   async fetchAllShowtimes(page, limit) {
     const skip = (page - 1) * limit;
