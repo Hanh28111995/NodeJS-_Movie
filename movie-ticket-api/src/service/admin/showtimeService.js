@@ -1,6 +1,8 @@
 import showtimeRepository from "../../repository/showtimeRepository.js";
 import theaterRepository from "../../repository/theaterRepository.js";
 import seatTypeRepository from "../../repository/seatTypeRepository.js";
+import SeatType from "../../model/seatTypeModel.js";
+
 class ShowtimeService {
   
 // ... trong Service class
