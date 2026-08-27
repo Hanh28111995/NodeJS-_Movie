@@ -14,11 +14,17 @@ class SeatTypeRepository {
   }
 
   async updateById(id, updateData) {
-    return await SeatType.findByIdAndUpdate(id, updateData, { new: true }).lean();
+    return await SeatType.findByIdAndUpdate(id, updateData, {
+      new: true,
+    }).lean();
   }
 
   async deleteById(id) {
     return await SeatType.findByIdAndDelete(id);
+  }
+
+  async findByIds(ids) {
+    return await SeatType.find({ _id: { $in: ids } }).lean();
   }
 }
 
