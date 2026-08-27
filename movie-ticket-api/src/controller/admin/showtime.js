@@ -5,8 +5,8 @@ import showtimeService from "../../service/admin/showtimeService.js";
 // CREATE
 export const createShowtime = asyncHandler(async (req, res) => {
   try {
-    const { theater: theaterId, id_movie: movieId, startTime } = req.body;
-    const showtime = await showtimeService.createOneShowtime({ theaterId, movieId, startTime });
+    const { theater: theaterId, id_movie: movieId, startTime, cinema } = req.body;
+    const showtime = await showtimeService.createOneShowtime({ theaterId, movieId, startTime, cinema });
     return sendSuccess(res, "Showtime created successfully", showtime);
   } catch (err) {
     return sendError(res, err.message, err.statusCode || 400);
