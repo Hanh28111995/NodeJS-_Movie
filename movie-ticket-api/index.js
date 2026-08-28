@@ -23,6 +23,7 @@ import errorHandler from "./src/middleware/error.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { globalLimiter } from "./src/middleware/rateLimiter.js";
+import NotificationRouter from "./src/router/notification.js";
 
 
 const PORT = process.env.PORT || 5000;
@@ -60,6 +61,7 @@ app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
 app.use("/api/general", generalRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/payment", paymentRouter);
+app.use("/api/notification", NotificationRouter);
 app.use("/api/cron", cronRouter);
 
 // Middleware xử lý lỗi tập trung
