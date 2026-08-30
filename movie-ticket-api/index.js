@@ -61,7 +61,7 @@ app.use("/api/staff", verifyToken, verifyStaff, staffRouter);
 app.use("/api/general", generalRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/payment", paymentRouter);
-app.use("/api/notification", NotificationRouter);
+app.use("/api/notifications", NotificationRouter);
 app.use("/api/cron", cronRouter);
 
 // Middleware xử lý lỗi tập trung
