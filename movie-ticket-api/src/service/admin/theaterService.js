@@ -46,18 +46,41 @@ class TheaterService {
   }
 
   async updateTheater(id, updateData) {
-    const updatedTheater = await theaterRepository.updateById(id, updateData);
-    if (!updatedTheater) {
-      const error = new Error("Không tìm thấy phòng chiếu để cập nhật");
-      error.statusCode = 404;
-      throw error;
+    const { totalSeat, seats } = updateData;
+
+    // Lấy thông tin phòng chiếu cũ trong DB để so sánh quy mô (rows/cols)
+    const oldTheater = await theaterRepository.findById(id);
+    if (!oldTheater) {
+        const error = new Error("Không tìm thấy phòng chiếu để cập nhật");
+        error.statusCode = 404;
+        throw error;
     }
 
-    // Xóa cache khi cập nhật phòng chiếu
+    const isRowsColsChanged = 
+        totalSeat && 
+        (totalSeat.rows !== oldTheater.totalSeat?.rows || totalSeat.cols !== oldTheater.totalSeat?.cols);
+
+    if (isRowsColsChanged || (Array.isArray(seats) && seats.length === 0 && totalSeat?.rows && totalSeat?.cols)) {
+        // Trường hợp 1: Đổi rows/cols hoặc client gửi seats = [] do bấm reset quy mô
+        // -> Tiến hành sinh lại sơ đồ ghế mới hoàn toàn
+        updateData.seats = await generateSeats(totalSeat.rows, totalSeat.cols);
+    } 
+    else if (!Array.isArray(seats) || seats.length === 0) {
+        // Trường hợp 2: Quy mô không đổi mà seats rỗng/không gửi 
+        // -> Giữ nguyên giá trị cũ, xóa trường seats ra khỏi lệnh update để không bị ghi đè mất dữ liệu
+        delete updateData.seats;
+    } 
+    else {
+        // Trường hợp 3: Client có gửi danh sách ghế cụ thể (ví dụ admin chỉnh sửa từng ghế thủ công trên giao diện)
+        // -> Cập nhật bình thường theo mảng seats mới
+        updateData.seats = seats;
+    }
+
+    const updatedTheater = await theaterRepository.updateById(id, updateData);
     await this.#clearTheaterCaches();
 
     return updatedTheater;
-  }
+}
 
   async deleteTheater(id) {
     const theater = await theaterRepository.findByIdRaw(id);
