@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone.js";
 import utc from "dayjs/plugin/utc.js";
+import Showtime from "../model/showtimeModel.js";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

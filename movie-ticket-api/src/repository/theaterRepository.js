@@ -13,6 +13,12 @@ class TheaterRepository {
     return await Theater.findById(id);
   }
 
+  async findByIds(ids) {
+    return await Theater.find({ _id: { $in: ids } })
+      .select("_id cinemaName seats")
+      .lean();
+  }
+
   async create(data) {
     return await Theater.create(data);
   }

@@ -67,6 +67,26 @@ class ShowtimeRepository {
       .sort({ startTime: 1 })
       .lean();
   }
+
+  async findRange(theaters = [], startTime, endTime) {
+    return await Showtime.find({
+      theater: { $in: theaters },
+      startTime: { $gte: startTime, $lt: endTime },
+    })
+      .select("_id theater startTime id_movie seats")
+      .lean();
+  }
+
+  async findForScheduleRollOver(theaters = [], movies = [], slotTimes = []) {
+    return await Showtime.find({
+      theater: { $in: theaters },
+      id_movie: { $in: movies },
+      startTime: { $in: slotTimes },
+      "seats.isBooked": { $ne: true },
+    })
+      .select("_id theater startTime")
+      .lean();
+  }
 }
 
 export default new ShowtimeRepository();
