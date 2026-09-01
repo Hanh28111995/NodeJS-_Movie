@@ -9,11 +9,21 @@ export const revalidate = 0;
 
 const cronRouter = express.Router();
 
-// Middleware kiểm tra CRON_SECRET dùng chung
 const verifyCronSecret = (req, res, next) => {
+  const cronSecret = process.env.CRON_SECRET;  
+  if (!cronSecret) {
+    console.error("CRON_SECRET is not configured");
+    return res.status(500).json({
+      success: false,
+      message: "Cron authentication is not configured",
+    });
+  }
   const authHeader = req.headers.authorization;
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ success: false, message: "Unauthorized" });
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
   }
   next();
 };
