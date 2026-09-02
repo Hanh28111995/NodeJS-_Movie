@@ -4,7 +4,7 @@ import redisClient from "../config/Redis.js";
 import InforTicket from "../model/inforTicketModel.js";
 import Showtime from "../model/showtimeModel.js";
 
-const EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 tiếng
+const EXPIRY_MS = 0.5 * 60 * 60 * 1000; // 30 phút
 
 /**
  * @desc Lazy cleanup — gọi khi getShowtimeById hoặc thao tác liên quan, dọn vé Pending quá hạn
