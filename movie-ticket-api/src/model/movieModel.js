@@ -37,6 +37,10 @@ const movieSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    cast: {
+      type: [String],
+      required: true,
+    },
     releaseDate: {
       type: Date,
       required: true,
@@ -53,6 +57,17 @@ const movieSchema = new mongoose.Schema(
       type: Number,
       min: 0,
       max: 10,
+    },
+    ageRating: {
+      type: String,
+      required: true,
+      enum: ["P", "C13", "C16", "C18"], // Phân loại độ tuổi
+      default: "P",
+    },
+    formats: {
+      type: [String],
+      required: true, // Các định dạng phim hỗ trợ: 2D, 3D, IMAX,...
+      default: ["2D"],
     },
   },
   {

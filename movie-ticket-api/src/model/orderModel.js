@@ -13,6 +13,7 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
       required: [true, "ID người dùng là bắt buộc"],
+      unique: true,
     },
     items: [
       {
@@ -20,7 +21,8 @@ const orderSchema = new mongoose.Schema(
           type: String,
           enum: {
             values: ["ticket", "shop"],
-            message: "{VALUE} không phải là phân loại hợp lệ (chỉ hỗ trợ ticket hoặc shop)",
+            message:
+              "{VALUE} không phải là phân loại hợp lệ (chỉ hỗ trợ ticket hoặc shop)",
           },
           required: true,
         },
@@ -80,7 +82,7 @@ const orderSchema = new mongoose.Schema(
   {
     timestamps: true, // Tự động tạo createdAt và updatedAt thay thế cho trường createdAt thủ công
     collection: "orders",
-  }
+  },
 );
 
 // Tạo index để tối ưu truy vấn lịch sử mua hàng của user và sắp xếp theo thời gian mới nhất
