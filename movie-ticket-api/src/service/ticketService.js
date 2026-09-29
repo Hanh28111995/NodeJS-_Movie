@@ -113,7 +113,10 @@ export const createTicket = async (ticketData) => {
     }
   }
 
-  const newTicket = await ticketRepository.create(ticketData);
+  const newTicket = await ticketRepository.create({
+  ...ticketData,
+  couponCode: ticketData.couponCode ?? null,
+});
 
   await Notification.create({
     id_ticket: newTicket._id,

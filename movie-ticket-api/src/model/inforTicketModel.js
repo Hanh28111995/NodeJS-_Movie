@@ -5,8 +5,7 @@ const inforTicketSchema = new mongoose.Schema(
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
-      required: [true, "ID người dùng là bắt buộc"],
-      unique: true,
+      required: [true, "ID người dùng là bắt buộc"],      
     },
     id_movie: {
       type: mongoose.Schema.Types.String,
