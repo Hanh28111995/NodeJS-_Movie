@@ -11,6 +11,8 @@ import adminPromotionRouter from "./promotion.js";
 import adminShopRouter from "./shop.js";
 import adminBannerRouter from "./banner.js";
 import scheduleGenRouter from "./schedulteGen.js";
+import adminOrderRouter from "./order.js";
+import adminCouponRouter from "./coupon.js";
 
 const adminRouter = express.Router();
 
@@ -25,6 +27,8 @@ adminRouter.use("/schedule-generator", scheduleGenRouter);
 adminRouter.use("/promotion", adminPromotionRouter);
 adminRouter.use("/shop", adminShopRouter);
 adminRouter.use("/banner", adminBannerRouter);
+adminRouter.use("/order", adminOrderRouter);
+adminRouter.use("/coupon", adminCouponRouter);
 
 
 export default adminRouter;
