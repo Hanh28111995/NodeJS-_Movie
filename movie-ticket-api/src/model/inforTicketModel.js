@@ -45,6 +45,7 @@ const inforTicketSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    couponCode: { type: String, default: null },
   },
   {
     timestamps: true,

@@ -2,7 +2,7 @@ import * as orderRepository from "../repository/orderRepository.js";
 import * as couponRepository from "../repository/couponRepository.js";
 import { calculateDiscount } from "./couponService.js";
 import { sendError, sendSuccess, sendServerError } from "../helper/client.js";
-import { tryHoldCoupon } from "./couponHoldService.js";
+import { releaseCouponHold, tryHoldCoupon } from "./couponHoldService.js";
 
 // Tạo đơn: items từ body, tính tiền, áp coupon
 export const createNewOrder = async (res, body) => {
@@ -26,6 +26,7 @@ export const createNewOrder = async (res, body) => {
     try {
        discount = await calculateDiscount(couponCode, subtotal, user_id);
     } catch (err) {
+         await releaseCouponHold(couponCode, user_id); 
       return sendError(
         res,
         {

@@ -1,5 +1,6 @@
 import * as couponRepository from "../repository/couponRepository.js";
 import { sendError, sendServerError, sendSuccess } from "../helper/client.js";
+import { releaseCouponHold } from "./couponHoldService.js";
 
 // Tính discount, hỗ trợ check owner_id và minSubtotal
 export const calculateDiscount = async (code, subtotal, userId) => {
@@ -32,11 +33,6 @@ export const validateCoupon = async (res, code, subtotal, userId) => {
   }
 };
 
-// ---- Xử lý trong Checkout / Payment ----
-export const releaseCouponHold = async (code, userId) => {
-  if (!code) return;
-  // TODO: Xóa giữ chỗ trên Redis nếu có
-};
 
 export const consumeCoupon = async (code, userId) => {
   if (!code) return;

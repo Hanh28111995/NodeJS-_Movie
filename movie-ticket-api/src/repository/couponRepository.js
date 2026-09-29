@@ -29,23 +29,14 @@ export const getCouponByCode = (code) =>
 export const incrementUsedCount = (id) =>
   Coupons.findByIdAndUpdate(id, { $inc: { usedCount: 1 } }, { new: true });
 
-// Tăng usedCount, sau đó nếu usedCount >= maxUsage thì tự động chuyển active thành false (atomic update bằng pipeline)
-export const deactivateIfUsedUp = async (id, maxUsage) => {
-  // Bước 1: Tăng usedCount lên 1
-  const updatedCoupon = await Coupons.findByIdAndUpdate(
+export const deactivateIfUsedUp = (id, maxUsage) =>
+  Coupons.findByIdAndUpdate(
     id,
-    { $inc: { usedCount: 1 } },
-    { new: true }
+    [{
+      $set: {
+        usedCount: { $add: ["$usedCount", 1] },
+        active: { $cond: [{ $gte: [{ $add: ["$usedCount", 1] }, maxUsage] }, false, "$active"] },
+      },
+    }],
+    { new: true },
   );
-
-  // Bước 2: Kiểm tra nếu vượt quá hoặc bằng maxUsage thì set active = false
-  if (updatedCoupon && updatedCoupon.usedCount >= maxUsage) {
-    return await Coupons.findByIdAndUpdate(
-      id,
-      { active: false },
-      { new: true }
-    );
-  }
-
-  return updatedCoupon;
-};

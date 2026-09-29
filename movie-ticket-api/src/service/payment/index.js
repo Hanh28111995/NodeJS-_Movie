@@ -163,7 +163,7 @@ export const PaymentService = {
           
           // Thanh toán thành công: Tiêu thụ coupon[cite: 5]
           if (ticket && ticket.couponCode) {
-            await couponService.consumeCoupon(ticket.couponCode, ticket.userId);
+            await couponService.consumeCoupon(ticket.couponCode, ticket.user_id);
           }
 
           return res.redirect(
@@ -174,7 +174,7 @@ export const PaymentService = {
           
           // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
           if (ticket && ticket.couponCode) {
-            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.userId);
+            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.user_id);
           }
 
           return res.redirect(
@@ -300,7 +300,7 @@ export const PaymentService = {
           
           // Thanh toán thành công: Tiêu thụ coupon[cite: 5]
           if (ticket && ticket.couponCode) {
-            await couponService.consumeCoupon(ticket.couponCode, ticket.userId);
+            await couponService.consumeCoupon(ticket.couponCode, ticket.user_id);
           }
 
           return res.redirect(
@@ -311,7 +311,7 @@ export const PaymentService = {
           
           // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
           if (ticket && ticket.couponCode) {
-            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.userId);
+            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.user_id);
           }
 
           return res.redirect(
