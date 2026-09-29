@@ -1,5 +1,5 @@
 import * as couponRepository from "../repository/couponRepository.js";
-import { sendError, sendServerError } from "../helper/client.js";
+import { sendError, sendServerError, sendSuccess } from "../helper/client.js";
 
 // Validate + trả discount tuyệt đối; dùng chung ở orderService
 export const calculateDiscount = async (code, subtotal) => {
@@ -9,6 +9,7 @@ export const calculateDiscount = async (code, subtotal) => {
   if (!coupon.active) throw new Error("COUPON_INACTIVE");
   const now = new Date();
   if (now < coupon.startDate || now > coupon.endDate) throw new Error("COUPON_EXPIRED");
+  if (coupon.usedCount >= (coupon.maxUsage ?? Infinity)) throw new Error("COUPON_USED_UP");
   return Math.min((subtotal * coupon.discountPercent) / 100, coupon.maxDiscount);
 };
 
