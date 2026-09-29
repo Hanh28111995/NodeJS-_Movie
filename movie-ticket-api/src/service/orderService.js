@@ -24,30 +24,37 @@ export const createNewOrder = async (res, body) => {
     }
 
     try {
-       discount = await calculateDiscount(couponCode, subtotal, user_id);
+      discount = await calculateDiscount(couponCode, subtotal, user_id);
     } catch (err) {
-         await releaseCouponHold(couponCode, user_id); 
+      await releaseCouponHold(couponCode, user_id);
       return sendError(
         res,
         {
           COUPON_NOT_FOUND: "Mã không tồn tại",
           COUPON_INACTIVE: "Mã đã ngừng hoạt động",
           COUPON_EXPIRED: "Mã đã hết hạn",
+          COUPON_USED_UP: "Mã đã hết lượt sử dụng",
+          COUPON_OWNER_MISMATCH: "Mã giảm giá không thuộc về bạn",
+          COUPON_MIN_SUBTOTAL: "Đơn hàng chưa đạt giá trị tối thiểu để dùng mã",
         }[err.message] || "Lỗi mã giảm giá",
         400,
       );
     }
 
-    const order = await orderRepository.createOrder({
-      user_id,
-      items,
-      couponCode: couponCode?.toUpperCase(),
-      couponDiscount: discount,
-      totalAmount: subtotal - discount,
-      paymentMethod: body.paymentMethod,
-    });
-
-    return sendSuccess(res, "Tạo đơn hàng thành công", order);
+    try {
+      const order = await orderRepository.createOrder({
+        user_id,
+        items,
+        couponCode: couponCode?.toUpperCase(),
+        couponDiscount: discount,
+        totalAmount: subtotal - discount,
+        paymentMethod: body.paymentMethod,
+      });
+      return sendSuccess(res, "Tạo đơn hàng thành công", order);
+    } catch {
+      await releaseCouponHold(couponCode, user_id);   // ← thêm: DB lỗi cũng phải thả hold
+      return sendServerError(res);
+    }
   } catch {
     return sendServerError(res);
   }

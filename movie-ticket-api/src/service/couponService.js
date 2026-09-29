@@ -33,14 +33,12 @@ export const validateCoupon = async (res, code, subtotal, userId) => {
   }
 };
 
-
 export const consumeCoupon = async (code, userId) => {
   if (!code) return;
-  await releaseCouponHold(code, userId);
   const coupon = await couponRepository.getCouponByCode(code);
   if (!coupon) return;
-  // Tăng usedCount, tự động tắt active nếu dùng đủ maxUsage[cite: 5]
   await couponRepository.deactivateIfUsedUp(coupon._id, coupon.maxUsage);
+  await releaseCouponHold(code, userId);   // giải phóng sau cùng
 };
 
 export const releaseCouponHoldOnly = async (code, userId) => {
