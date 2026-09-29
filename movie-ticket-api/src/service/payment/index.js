@@ -1,5 +1,5 @@
-import * as ticketRepository from "../../service/ticketService.js";
-import * as couponService from "../service/couponService.js";
+import * as ticketRepository from "./../../service/ticketService.js";
+import * as couponService from "./../../service/couponService.js";
 import {
   sendSuccess,
   sendError,
@@ -10,22 +10,25 @@ import https from "https";
 
 // Build query string để ký — encode value, space thành + (chuẩn VNPay)
 function toSignData(obj) {
-  return Object.keys(obj).sort()
-    .map(k => `\({k}=\){encodeURIComponent(obj[k]).replace(/%20/g, "+")}`)
+  return Object.keys(obj)
+    .sort()
+    .map((k) => `\({k}=\){encodeURIComponent(obj[k]).replace(/%20/g, "+")}`)
     .join("&");
 }
 
 // Build query string cho URL — encode value
 function toQueryString(obj) {
-  return Object.keys(obj).sort()
-    .map(k => `\({k}=\){encodeURIComponent(obj[k])}`)
+  return Object.keys(obj)
+    .sort()
+    .map((k) => `\({k}=\){encodeURIComponent(obj[k])}`)
     .join("&");
 }
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 // ==================== VNPAY ====================
-const VNP_RETURN_URL = "https://node-js-movie.vercel.app/api/payment/return_vnpay";
+const VNP_RETURN_URL =
+  "https://node-js-movie.vercel.app/api/payment/return_vnpay";
 
 // Tính tổng tiền từ seatName array — price đã được enrich từ DB ở controller
 function calcTotalPrice(seatName = []) {
@@ -69,7 +72,7 @@ export const PaymentService = {
 
   // ==================== VNPAY ====================
   vnpay: {
-    // Tạo URL thanh toán, nhúng ticketId vào orderId 
+    // Tạo URL thanh toán, nhúng ticketId vào orderId
     createPaymentUrl: async (res, req, ticketData) => {
       try {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
@@ -118,7 +121,8 @@ export const PaymentService = {
         };
 
         const signData = toSignData(vnpParams);
-        const signed = crypto.createHmac("sha512", hashSecret)
+        const signed = crypto
+          .createHmac("sha512", hashSecret)
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
 
@@ -159,22 +163,29 @@ export const PaymentService = {
         const responseCode = query["vnp_ResponseCode"];
 
         if (responseCode === "00") {
-          const ticket = ticketId ? await ticketRepository.completeTicket(ticketId) : null;
-          
-          // Thanh toán thành công: Tiêu thụ coupon[cite: 5]
+          const ticket = ticketId
+            ? await ticketRepository.completeTicket(ticketId)
+            : null;
+
+          const uid = String(ticket.user_id?._id || ticket.user_id);
           if (ticket && ticket.couponCode) {
-            await couponService.consumeCoupon(ticket.couponCode, ticket.user_id);
+            await couponService.consumeCoupon(ticket.couponCode, uid);
           }
 
           return res.redirect(
             `\({FRONTEND_URL}/payment-result?status=success&method=vnpay&ticketId=\){ticketId}`,
           );
         } else {
-          const ticket = ticketId ? await ticketRepository.cancelTicket(ticketId) : null;
-          
+          const ticket = ticketId
+            ? await ticketRepository.cancelTicket(ticketId)
+            : null;
+
           // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
           if (ticket && ticket.couponCode) {
-            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.user_id);
+            await couponService.releaseCouponHoldOnly(
+              ticket.couponCode,
+              ticket.user_id,
+            );
           }
 
           return res.redirect(
@@ -296,22 +307,29 @@ export const PaymentService = {
         const ticketId = (orderId || "").split("__")[0];
 
         if (resultCode === "0") {
-          const ticket = ticketId ? await ticketRepository.completeTicket(ticketId) : null;
-          
-          // Thanh toán thành công: Tiêu thụ coupon[cite: 5]
+          const ticket = ticketId
+            ? await ticketRepository.completeTicket(ticketId)
+            : null;
+
+          const uid = String(ticket.user_id?._id || ticket.user_id);
           if (ticket && ticket.couponCode) {
-            await couponService.consumeCoupon(ticket.couponCode, ticket.user_id);
+            await couponService.consumeCoupon(ticket.couponCode, uid);
           }
 
           return res.redirect(
             `\({FRONTEND_URL}/payment-result?status=success&method=momo&ticketId=\){ticketId}`,
           );
         } else {
-          const ticket = ticketId ? await ticketRepository.cancelTicket(ticketId) : null;
-          
+          const ticket = ticketId
+            ? await ticketRepository.cancelTicket(ticketId)
+            : null;
+
           // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
           if (ticket && ticket.couponCode) {
-            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.user_id);
+            await couponService.releaseCouponHoldOnly(
+              ticket.couponCode,
+              ticket.user_id,
+            );
           }
 
           return res.redirect(
