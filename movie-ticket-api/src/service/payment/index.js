@@ -1,4 +1,5 @@
 import * as ticketRepository from "../../service/ticketService.js";
+import * as couponService from "../service/couponService.js";
 import {
   sendSuccess,
   sendError,
@@ -10,14 +11,14 @@ import https from "https";
 // Build query string để ký — encode value, space thành + (chuẩn VNPay)
 function toSignData(obj) {
   return Object.keys(obj).sort()
-    .map(k => `${k}=${encodeURIComponent(obj[k]).replace(/%20/g, "+")}`)
+    .map(k => `\({k}=\){encodeURIComponent(obj[k]).replace(/%20/g, "+")}`)
     .join("&");
 }
 
 // Build query string cho URL — encode value
 function toQueryString(obj) {
   return Object.keys(obj).sort()
-    .map(k => `${k}=${encodeURIComponent(obj[k])}`)
+    .map(k => `\({k}=\){encodeURIComponent(obj[k])}`)
     .join("&");
 }
 
@@ -25,8 +26,6 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 // ==================== VNPAY ====================
 const VNP_RETURN_URL = "https://node-js-movie.vercel.app/api/payment/return_vnpay";
-
-
 
 // Tính tổng tiền từ seatName array — price đã được enrich từ DB ở controller
 function calcTotalPrice(seatName = []) {
@@ -84,7 +83,7 @@ export const PaymentService = {
           .toISOString()
           .replace(/[-:T.Z]/g, "")
           .slice(0, 14);
-        const orderId = `${ticketId}__${Date.now()}`;
+        const orderId = `\({ticketId}__\){Date.now()}`;
         const orderInfo = buildOrderInfo(ticketData.seatName);
 
         const tmnCode = process.env.VNP_TMNCODE;
@@ -102,7 +101,6 @@ export const PaymentService = {
           console.error("[VNPay] Missing env configuration");
           return sendError(res, "Cấu hình VNPay chưa đầy đủ", 500);
         }
-        console.log("[VNPay] tmnCode:", tmnCode, "| hashSecret length:", hashSecret.length, "| first4:", hashSecret.slice(0,4));
 
         let vnpParams = {
           vnp_Version: "2.1.0",
@@ -119,19 +117,13 @@ export const PaymentService = {
           vnp_CreateDate: createDate,
         };
 
-        // 1. Tạo signData từ params đã sort, không encode
         const signData = toSignData(vnpParams);
-        console.log("[VNPay] signData:", signData);
-
-        // 2. Hash HMAC-SHA512
         const signed = crypto.createHmac("sha512", hashSecret)
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
-        console.log("[VNPay] signed:", signed);
 
-        // 3. Build URL với encode
         vnpParams["vnp_SecureHash"] = signed;
-        const paymentUrl = `${vnpUrl}?${toQueryString(vnpParams)}`;
+        const paymentUrl = `\({vnpUrl}?\){toQueryString(vnpParams)}`;
 
         return sendSuccess(res, "Tạo link VNPay thành công", { paymentUrl });
       } catch (err) {
@@ -167,14 +159,26 @@ export const PaymentService = {
         const responseCode = query["vnp_ResponseCode"];
 
         if (responseCode === "00") {
-          if (ticketId) await ticketRepository.completeTicket(ticketId);
+          const ticket = ticketId ? await ticketRepository.completeTicket(ticketId) : null;
+          
+          // Thanh toán thành công: Tiêu thụ coupon[cite: 5]
+          if (ticket && ticket.couponCode) {
+            await couponService.consumeCoupon(ticket.couponCode, ticket.userId);
+          }
+
           return res.redirect(
-            `${FRONTEND_URL}/payment-result?status=success&method=vnpay&ticketId=${ticketId}`,
+            `\({FRONTEND_URL}/payment-result?status=success&method=vnpay&ticketId=\){ticketId}`,
           );
         } else {
-          if (ticketId) await ticketRepository.cancelTicket(ticketId);
+          const ticket = ticketId ? await ticketRepository.cancelTicket(ticketId) : null;
+          
+          // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
+          if (ticket && ticket.couponCode) {
+            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.userId);
+          }
+
           return res.redirect(
-            `${FRONTEND_URL}/payment-result?status=failed&method=vnpay&code=${responseCode}`,
+            `\({FRONTEND_URL}/payment-result?status=failed&method=vnpay&code=\){responseCode}`,
           );
         }
       } catch (err) {
@@ -194,12 +198,12 @@ export const PaymentService = {
         const amount = String(calcTotalPrice(ticketData.seatName));
         if (!Number(amount))
           return sendError(res, "Không tính được tổng tiền vé", 400);
-        const orderId = `${ticketId}__${Date.now()}`;
+        const orderId = `\({ticketId}__\){Date.now()}`;
         const requestId = orderId;
         const orderInfo = buildOrderInfo(ticketData.seatName);
         const extraData = "";
 
-        const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${momoConfig.ipnUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${momoConfig.partnerCode}&redirectUrl=${momoConfig.redirectUrl}&requestId=${requestId}&requestType=payWithMethod`;
+        const rawSignature = `accessKey=\({momoConfig.accessKey}&amount=\){amount}&extraData=\({extraData}&ipnUrl=\){momoConfig.ipnUrl}&orderId=\({orderId}&orderInfo=\){orderInfo}&partnerCode=\({momoConfig.partnerCode}&redirectUrl=\){momoConfig.redirectUrl}&requestId=${requestId}&requestType=payWithMethod`;
         const signature = crypto
           .createHmac("sha256", momoConfig.secretKey)
           .update(rawSignature)
@@ -212,9 +216,8 @@ export const PaymentService = {
           amount,
           orderId,
           orderInfo,
-          redirectUrl:
-            "https://node-js-movie.vercel.app/api/payment/return_momo",
-          ipnUrl: "https://node-js-movie.vercel.app/api/payment/return_momo",
+          redirectUrl: MOMO_RETURN_URL,
+          ipnUrl: MOMO_RETURN_URL,
           extraData,
           requestType: "payWithMethod",
           signature,
@@ -277,7 +280,7 @@ export const PaymentService = {
           signature,
         } = query;
 
-        const rawSignature = `accessKey=${momoConfig.accessKey}&amount=${amount}&extraData=${extraData}&message=${message}&orderId=${orderId}&orderInfo=${orderInfo}&orderType=${orderType}&partnerCode=${partnerCode}&payType=${payType}&requestId=${requestId}&responseTime=${responseTime}&resultCode=${resultCode}&transId=${transId}`;
+        const rawSignature = `accessKey=\({momoConfig.accessKey}&amount=\){amount}&extraData=\({extraData}&message=\){message}&orderId=\({orderId}&orderInfo=\){orderInfo}&orderType=\({orderType}&partnerCode=\){partnerCode}&payType=\({payType}&requestId=\){requestId}&responseTime=\({responseTime}&resultCode=\){resultCode}&transId=${transId}`;
         const checkSignature = crypto
           .createHmac("sha256", momoConfig.secretKey)
           .update(rawSignature)
@@ -293,14 +296,26 @@ export const PaymentService = {
         const ticketId = (orderId || "").split("__")[0];
 
         if (resultCode === "0") {
-          if (ticketId) await ticketRepository.completeTicket(ticketId);
+          const ticket = ticketId ? await ticketRepository.completeTicket(ticketId) : null;
+          
+          // Thanh toán thành công: Tiêu thụ coupon[cite: 5]
+          if (ticket && ticket.couponCode) {
+            await couponService.consumeCoupon(ticket.couponCode, ticket.userId);
+          }
+
           return res.redirect(
-            `${FRONTEND_URL}/payment-result?status=success&method=momo&ticketId=${ticketId}`,
+            `\({FRONTEND_URL}/payment-result?status=success&method=momo&ticketId=\){ticketId}`,
           );
         } else {
-          if (ticketId) await ticketRepository.cancelTicket(ticketId);
+          const ticket = ticketId ? await ticketRepository.cancelTicket(ticketId) : null;
+          
+          // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
+          if (ticket && ticket.couponCode) {
+            await couponService.releaseCouponHoldOnly(ticket.couponCode, ticket.userId);
+          }
+
           return res.redirect(
-            `${FRONTEND_URL}/payment-result?status=failed&method=momo&code=${resultCode}`,
+            `\({FRONTEND_URL}/payment-result?status=failed&method=momo&code=\){resultCode}`,
           );
         }
       } catch (err) {

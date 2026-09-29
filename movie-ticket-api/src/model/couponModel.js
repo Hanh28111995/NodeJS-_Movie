@@ -27,6 +27,24 @@ const couponSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    owner_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      default: null,
+    },
+    type: {
+      type: String,
+      enum: ["admin", "redeem"],
+      default: "admin",
+    },
+    minSubtotal: {
+      type: Number,
+      default: 0,
+    },
+    maxUsage: {
+      type: Number,
+      default: 1,
+    },
     startDate: {
       type: Date,
       required: true,
@@ -53,6 +71,7 @@ const couponSchema = new mongoose.Schema(
 
 couponSchema.index({ code: 1 });
 couponSchema.index({ startDate: 1, endDate: 1 });
+couponSchema.index({ owner_id: 1 });
 
 const Coupons = mongoose.model("coupons", couponSchema);
 
