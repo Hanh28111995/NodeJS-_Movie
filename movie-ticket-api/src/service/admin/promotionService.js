@@ -48,8 +48,7 @@ class PromotionService {
     const fullData = { ...bodyData, banner: bannerUrl };
 
     const validate = submitNewPromotion(fullData);
-    if (validate) {
-      // Nếu validate thất bại, xóa file vừa upload lên Firebase để tránh rác
+    if (validate) {      
       await deleteFromFirebase(bannerUrl).catch(() => {});
       const error = new Error("Invalid input data");
       error.statusCode = 400;

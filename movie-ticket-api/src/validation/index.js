@@ -5,25 +5,27 @@ export const submitNewShopProduct = (data) => {
   error
     .isRequired(data.title, "title")
     .isRequired(data.banner, "banner")
-    .isRequired(data.price, "price");
+    .isRequired(data.price, "price")
+    .isRequired(
+      data.stockByBranch && Object.keys(data.stockByBranch).length > 0,
+      "stockByBranch",
+    );
   return error.get();
 };
 
 export const submitNewPromotion = (data) => {
   const error = new Error();
   error
-    .isRequired(data.title, "title")    
+    .isRequired(data.title, "title")
     .isRequired(data.content, "content")
     .isRequired(data.startDate, "startDate")
-    .isRequired(data.endDate, "endDate")    
+    .isRequired(data.endDate, "endDate");
   return error.get();
 };
 
 export const submitNewBanner = (data) => {
   const error = new Error();
-  error
-    .isRequired(data.url, "url")
-    .isRequired(data.movie_id, "movie_id")    
+  error.isRequired(data.url, "url").isRequired(data.movie_id, "movie_id");
   return error.get();
 };
 
@@ -42,23 +44,21 @@ export const submitSeatType = (data) => {
   return error.get();
 };
 
-
-
 export const submitNewTheater = (data) => {
   const error = new Error();
   error
     .isRequired(data.name, "name")
     .isRequired(data.cinemaName, "cinemaName")
     .isRequired(data.totalSeat, "totalSeat")
-    .isRequired(data.branch, "branch");    
+    .isRequired(data.branch, "branch");
   return error.get();
 };
 
 export const submitShowtime = (data) => {
   const error = new Error();
-  error    
+  error
     .isRequired(data.theater, "theater")
-    .isRequired(data.id_movie, "id_movie")    
+    .isRequired(data.id_movie, "id_movie")
     .isRequired(data.startTime, "startTime");
   return error.get();
 };
@@ -73,7 +73,7 @@ export const submitNewMovie = (data) => {
     .isRequired(data.director, "director")
     .isRequired(data.releaseDate, "releaseDate")
     .isRequired(data.genre, "genre")
-    .isRequired(data.duration, "duration")
+    .isRequired(data.duration, "duration");
   return error.get();
 };
 
@@ -91,7 +91,7 @@ export const submitNewTicket = (data) => {
 export const submitNewUser = (data) => {
   const error = new Error();
   error
-    .isRequired(data.username, "username")    
+    .isRequired(data.username, "username")
     .isRequired(data.email, "email")
     .isRequired(data.role, "role");
   return error.get();

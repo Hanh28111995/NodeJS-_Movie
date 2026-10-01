@@ -65,16 +65,16 @@ class ShopService {
       file,
       "shopProducts",
     );
-    const stockMap = normalizeStockByBranch(bodyData.stockByBranch);
     const fullData = { ...bodyData, banner: bannerUrl };
+    const stockMap = normalizeStockByBranch(bodyData.stockByBranch);    
+    if (stockMap !== undefined) fullData.stockByBranch = stockMap;
     const validate = submitNewShopProduct(fullData);
     if (validate) {
       await deleteFromFirebase(bannerUrl).catch(() => {});
       const error = new Error("Invalid input data");
       error.statusCode = 400;
       throw error;
-    }
-    if (stockMap !== undefined) fullData.stockByBranch = stockMap;
+    }    
 
     const newShop = await shopRepository.create(fullData);
     return newShop;
