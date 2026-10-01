@@ -1,6 +1,29 @@
 import shopRepository from "../../repository/shopRepository.js";
 import { submitNewShopProduct } from "../../validation/index.js";
-import { uploadToFirebase, deleteFromFirebase } from "../../helper/firebaseStorage.js";
+import {
+  uploadToFirebase,
+  deleteFromFirebase,
+} from "../../helper/firebaseStorage.js";
+
+// helper: chuẩn hóa stockByBranch từ payload (JSON string hoặc mảng) thành object cho Map
+const normalizeStockByBranch = (raw) => {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  let list = raw;
+  if (typeof raw === "string") {
+    try {
+      list = JSON.parse(raw);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!Array.isArray(list)) return undefined;
+  const map = {};
+  for (const item of list) {
+    const branch = item?.branch?.trim();
+    if (branch) map[branch] = Math.max(0, Number(item.quantity) || 0);
+  }
+  return map;
+};
 
 class ShopService {
   async getAllShops(query) {
@@ -38,9 +61,12 @@ class ShopService {
       throw error;
     }
 
-    const { publicUrl: bannerUrl } = await uploadToFirebase(file, "shopProducts");
+    const { publicUrl: bannerUrl } = await uploadToFirebase(
+      file,
+      "shopProducts",
+    );
+    const stockMap = normalizeStockByBranch(bodyData.stockByBranch);
     const fullData = { ...bodyData, banner: bannerUrl };
-
     const validate = submitNewShopProduct(fullData);
     if (validate) {
       await deleteFromFirebase(bannerUrl).catch(() => {});
@@ -48,13 +74,13 @@ class ShopService {
       error.statusCode = 400;
       throw error;
     }
+    if (stockMap !== undefined) fullData.stockByBranch = stockMap;
 
     const newShop = await shopRepository.create(fullData);
     return newShop;
   }
 
   async updateShop(shopid, bodyData, file) {
-    // Dựa theo code gốc của bạn, dùng id_shop để tìm kiếm
     const shop = await shopRepository.findOne({ id_shop: shopid });
     if (!shop) {
       const error = new Error("Shop product not found");
@@ -64,12 +90,18 @@ class ShopService {
 
     const updateData = { ...bodyData };
 
+    const stockMap = normalizeStockByBranch(bodyData.stockByBranch);
+    if (stockMap !== undefined) updateData.stockByBranch = stockMap;
+
     if (file) {
       const { publicUrl } = await uploadToFirebase(file, "shopProducts");
       updateData.banner = publicUrl;
     }
 
-    const updatedShop = await shopRepository.updateOne({ id_shop: shopid }, updateData);
+    const updatedShop = await shopRepository.updateOne(
+      { id_shop: shopid },
+      updateData,
+    );
 
     if (file && shop.banner) {
       await deleteFromFirebase(shop.banner);

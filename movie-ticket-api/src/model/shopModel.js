@@ -36,6 +36,11 @@ const shopSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    stockByBranch: {
+      type: Map,
+      of: Number, // { "Lotte Gò Vấp": 5, "Lotte Nam Sài Gòn": 0 }
+      default: {},
+    },
     limitPerCustomer: {
       type: Number,
       default: 0,
