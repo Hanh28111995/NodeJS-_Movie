@@ -66,7 +66,7 @@ class ShopService {
       "shopProducts",
     );
     const fullData = { ...bodyData, banner: bannerUrl };
-    const stockMap = normalizeStockByBranch(bodyData.stockByBranch);    
+    const stockMap = normalizeStockByBranch(bodyData.stockByBranch);
     if (stockMap !== undefined) fullData.stockByBranch = stockMap;
     const validate = submitNewShopProduct(fullData);
     if (validate) {
@@ -74,7 +74,7 @@ class ShopService {
       const error = new Error("Invalid input data");
       error.statusCode = 400;
       throw error;
-    }    
+    }
 
     const newShop = await shopRepository.create(fullData);
     return newShop;
@@ -89,7 +89,7 @@ class ShopService {
     }
 
     const updateData = { ...bodyData };
-
+    delete updateData.stockByBranch;
     const stockMap = normalizeStockByBranch(bodyData.stockByBranch);
     if (stockMap !== undefined) updateData.stockByBranch = stockMap;
 
