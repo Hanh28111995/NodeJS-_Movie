@@ -24,6 +24,15 @@ const normalizeStockByBranch = (raw) => {
   }
   return map;
 };
+const parseJsonField = (raw) => {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  if (typeof raw !== "string") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+};
 
 class ShopService {
   async getAllShops(query) {
@@ -68,6 +77,8 @@ class ShopService {
     const fullData = { ...bodyData, banner: bannerUrl };
     const stockMap = normalizeStockByBranch(bodyData.stockByBranch);
     if (stockMap !== undefined) fullData.stockByBranch = stockMap;
+    const optionsArr = parseJsonField(bodyData.options);
+    if (optionsArr !== undefined) fullData.options = optionsArr;
     const validate = submitNewShopProduct(fullData);
     if (validate) {
       await deleteFromFirebase(bannerUrl).catch(() => {});
@@ -90,8 +101,11 @@ class ShopService {
 
     const updateData = { ...bodyData };
     delete updateData.stockByBranch;
+    delete updateData.options; // ← xóa raw string
     const stockMap = normalizeStockByBranch(bodyData.stockByBranch);
     if (stockMap !== undefined) updateData.stockByBranch = stockMap;
+    const optionsArr = parseJsonField(bodyData.options);
+    if (optionsArr !== undefined) updateData.options = optionsArr;
 
     if (file) {
       const { publicUrl } = await uploadToFirebase(file, "shopProducts");
