@@ -3,8 +3,7 @@ import Error from "../helper/error.js";
 export const submitNewShopProduct = (data) => {
   const error = new Error();
   error
-    .isRequired(data.title, "title")
-    .isRequired(data.banner, "banner")
+    .isRequired(data.title, "title")    
     .isRequired(data.price, "price")
     .isRequired(
       data.stockByBranch && Object.keys(data.stockByBranch).length > 0,
