@@ -17,11 +17,16 @@ const cinemaSchema = new mongoose.Schema(
     coordinates: {
       type: [Number],
     },
+    totalRooms: { type: Number, default: 0 },
+    totalSeats: { type: Number, default: 0 },
+    directions: { type: String, default: "" },
+    amenities: { type: [String], default: [] },
+    parking: { type: String, default: "" }, 
   },
   {
     timestamps: true,
     collection: "cinemas",
-  }
+  },
 );
 
 const Cinema = mongoose.model("cinemas", cinemaSchema);

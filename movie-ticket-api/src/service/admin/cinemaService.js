@@ -1,10 +1,34 @@
 import cinemaRepository from "../../repository/cinemaRepository.js";
+import theaterRepository from "../../repository/theaterRepository.js";
 import redisClient from "../../config/Redis.js";
 
 class CinemaService {
   async getAllCinemas() {
     const cinemas = await cinemaRepository.findAll();
     return { cinemas };
+  }
+
+  async getCinemaDetail(cinemaId) {
+    const cinema = await cinemaRepository.findById(cinemaId);
+    if (!cinema) {
+      const error = new Error("Cinema not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const theaters = await theaterRepository.findByCinema(
+      cinema.cinemaName,
+      cinema.branch,
+    );
+
+    return {
+      ...cinema,
+      totalRooms: theaters.length,
+      totalSeats: theaters.reduce(
+        (total, theater) => total + (theater.seats?.length || 0),
+        0,
+      ),
+    };
   }
 
   async addCinema(bodyData) {

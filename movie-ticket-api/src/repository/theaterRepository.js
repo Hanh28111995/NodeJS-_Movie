@@ -19,6 +19,12 @@ class TheaterRepository {
       .lean();
   }
 
+  async findByCinema(cinemaName, branch) {
+    return await Theater.find({ cinemaName, branch })
+      .select("seats")
+      .lean();
+  }
+
   async create(data) {
     return await Theater.create(data);
   }

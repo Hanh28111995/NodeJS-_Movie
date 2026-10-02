@@ -10,6 +10,19 @@ export const getAllCinemas = asyncHandler(async (req, res) => {
   return sendSuccess(res, "Cinemas retrieved successfully", result);
 });
 
+export const getCinemaDetail = asyncHandler(async (req, res) => {
+  try {
+    const { cinemaId } = req.params;
+    const cinema = await cinemaService.getCinemaDetail(cinemaId);
+    return sendSuccess(res, "Cinema retrieved successfully", cinema);
+  } catch (error) {
+    if (error.statusCode) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    throw error;
+  }
+});
+
 export const addCinema = asyncHandler(async (req, res) => {
   try {
     const newCinema = await cinemaService.addCinema(req.body);

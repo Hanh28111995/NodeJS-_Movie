@@ -14,6 +14,7 @@ import { cacheMiddleware } from "../middleware/redisCache.js";
 import { verifyToken } from "../middleware/index.js";
 import NotificationRouter from "./notification.js";
 import Location from "../model/locationModal.js";
+import cinemaService from "../service/admin/cinemaService.js";
 
 const generalRouter = express.Router();
 
@@ -100,6 +101,16 @@ generalRouter.get("/cinema", cacheMiddleware("cache:cinemas", 600), asyncHandler
   const cinemas = await Cinema.find().lean();
   if (res.sendCached) return res.sendCached("All cinemas retrieved successfully", cinemas);
   return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
+}));
+
+generalRouter.get("/cinema/:id", asyncHandler(async (req, res) => {
+  try {
+    const cinema = await cinemaService.getCinemaDetail(req.params.id);
+    return sendSuccess(res, "Cinema retrieved successfully", cinema);
+  } catch (error) {
+    if (error.statusCode) return sendError(res, error.message, error.statusCode);
+    throw error;
+  }
 }));
 
 generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {

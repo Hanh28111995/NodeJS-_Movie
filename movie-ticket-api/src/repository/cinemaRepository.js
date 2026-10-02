@@ -3,7 +3,9 @@ import Cinema from "../model/cinemaModel.js";
 
 class CinemaRepository {
   async findAll() {
-    return await Cinema.find().lean();
+    return await Cinema.find()
+      .select("cinemaName branch address coordinates")
+      .lean();
   }
 
   async findById(id) {
