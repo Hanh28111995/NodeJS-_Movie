@@ -51,8 +51,33 @@ generalRouter.get("/showBanners", cacheMiddleware("cache:banners", 600),asyncHan
 
 generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
   const { title } = req.query;
-  const query = title ? { title: { $regex: title, $options: "i" } } : {};
-  const movies = await Movie.find(query).select('_id title banner releaseDate coming showing').sort({ releaseDate: -1 }).lean();
+
+  // Lấy config lịch chiếu đang active → lọc phim còn trong cửa sổ chiếu (startDate ≤ now ≤ endDate)
+  const config = await ScheduleConfig.findOne({ isActive: true }).lean();
+  const now = new Date();
+  const movieIds = (config?.movies || [])
+    .filter((m) => {
+      const s = m.startDate ? new Date(m.startDate) : null;
+      const e = m.endDate ? new Date(m.endDate) : null;
+      if (s && now < s) return false;
+      if (e && now > e) return false;
+      return true;
+    })
+    .map((m) => m.movie_id)
+    .filter(Boolean);
+
+  if (movieIds.length === 0) {
+    return sendSuccess(res, "All movies retrieved successfully", []);
+  }
+
+  const query = { _id: { $in: movieIds } };
+  if (title) query.title = { $regex: title, $options: "i" };
+
+  const movies = await Movie.find(query)
+    .select("_id title banner releaseDate coming showing")
+    .sort({ releaseDate: -1 })
+    .lean();
+
   return sendSuccess(res, "All movies retrieved successfully", movies);
 }));
 
