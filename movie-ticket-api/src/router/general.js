@@ -13,6 +13,7 @@ import ScheduleConfig from "../model/scheduleConfigModel.js";
 import { cacheMiddleware } from "../middleware/redisCache.js";
 import { verifyToken } from "../middleware/index.js";
 import NotificationRouter from "./notification.js";
+import Location from "../model/locationModal.js";
 
 const generalRouter = express.Router();
 
@@ -94,11 +95,8 @@ generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
 
 generalRouter.get("/locations", cacheMiddleware("cache:locations", 600), asyncHandler(async (req, res) => {
   addCacheHeader(res);
-  const locations = await mongoose.connection.db
-    .collection("locations")
-    .find({})
-    .sort({ _id: 1 })
-    .toArray();
+  const locations = await Location.find().sort({ _id: 1 }).lean();
+  if (res.sendCached) return res.sendCached("Locations retrieved successfully", locations);
   return sendSuccess(res, "Locations retrieved successfully", locations);
 }));
 
