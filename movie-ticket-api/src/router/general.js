@@ -9,6 +9,7 @@ import Banner from "../model/bannerModel.js";
 import asyncHandler from "../util/asyncHandler.js";
 import Theater from "../model/theaterModel.js";
 import SeatType from "../model/seatTypeModel.js";
+import ScheduleConfig from "../model/scheduleConfigModel.js";
 import { cacheMiddleware } from "../middleware/redisCache.js";
 import { verifyToken } from "../middleware/index.js";
 import NotificationRouter from "./notification.js";
@@ -22,29 +23,19 @@ const addCacheHeader = (res) => {
 
 generalRouter.get("/showingMovies", cacheMiddleware("cache:showingMovies", 300) ,asyncHandler(async (req, res) => {
   addCacheHeader(res);
-  const now = new Date();
-  const showtimes = await Showtime.find({ startTime: { $gte: now } })
-    .populate({
-      path: "id_movie",
-      select: "title banner duration genre releaseDate" // Chỉ lấy các trường cần thiết
-    })
+  const movieIds = await ScheduleConfig.distinct("movies.movie_id", { isActive: true });
+  const movies = await Movie.find({ showing: true, _id: { $in: movieIds } })
+    .select("title banner duration genre releaseDate")
     .lean();
-  
-  const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
   return sendSuccess(res, "Now showing movies retrieved successfully", movies);
 }));
 
 generalRouter.get("/comingMovies", cacheMiddleware("cache:comingMovies", 300),asyncHandler(async (req, res) => {
   addCacheHeader(res);
-  const now = new Date();
-  const showtimes = await Showtime.find({ startTime: { $gt: now } })
-    .populate({
-      path: "id_movie",
-      select: "title banner duration genre releaseDate"
-    })
+  const movieIds = await ScheduleConfig.distinct("movies.movie_id", { isActive: true });
+  const movies = await Movie.find({ coming: true, _id: { $in: movieIds } })
+    .select("title banner duration genre releaseDate")
     .lean();
-
-  const movies = [...new Map(showtimes.map((st) => [st.id_movie._id.toString(), st.id_movie])).values()];
   return sendSuccess(res, "Coming soon movies retrieved successfully", movies);
 }));
 
