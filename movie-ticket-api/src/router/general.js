@@ -94,34 +94,12 @@ generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
 
 generalRouter.get("/locations", cacheMiddleware("cache:locations", 600), asyncHandler(async (req, res) => {
   addCacheHeader(res);
-  const cinemas = await Cinema.find().select("address").lean();
-
-  const locationMap = {};
-
-  cinemas.forEach((c) => {
-    const parts = c.address.split(",").map(p => p.trim());
-    if (parts.length >= 2) {
-      const city = parts[parts.length - 1];
-      const district = parts[parts.length - 2];
-
-      if (!locationMap[city]) {
-        locationMap[city] = {
-          _id: city,
-          vungMien: city,
-          cumRap: new Set()
-        };
-      }
-      locationMap[city].cumRap.add(district);
-    }
-  });
-
-  const formattedLocations = Object.values(locationMap).map(item => ({
-    ...item,
-    cumRap: Array.from(item.cumRap)
-  }));
-
-  if (res.sendCached) return res.sendCached("Locations retrieved successfully", formattedLocations);
-  return sendSuccess(res, "Locations retrieved successfully", formattedLocations);
+  const locations = await mongoose.connection.db
+    .collection("locations")
+    .find({})
+    .sort({ _id: 1 })
+    .toArray();
+  return sendSuccess(res, "Locations retrieved successfully", locations);
 }));
 
 generalRouter.get("/theaterByCinema", cacheMiddleware("cache:theaterByCinema", 300), asyncHandler(async (req, res) => {
