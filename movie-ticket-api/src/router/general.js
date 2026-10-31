@@ -15,6 +15,7 @@ import { verifyToken } from "../middleware/index.js";
 import NotificationRouter from "./notification.js";
 import Location from "../model/locationModal.js";
 import cinemaService from "../service/admin/cinemaService.js";
+import mongoose from "mongoose";
 
 const generalRouter = express.Router();
 
@@ -222,33 +223,67 @@ generalRouter.get("/promotion/:id", asyncHandler(async (req, res) => {
 
 generalRouter.get("/shop/all", asyncHandler(async (req, res) => {
   addCacheHeader(res);
-  const { area, theater, productName, priceSort, productType } = req.query;
-  const query = {};
-  
-  if (productName) {
-    query.title = { $regex: productName, $options: "i" };
+  const { area, theater, productName, priceSort } = req.query;
+  const query = { active: true };
+
+  if (productName?.trim()) {
+    query.title = { $regex: productName.trim(), $options: "i" };
   }
 
-  if (area) {
-    query.area = area;
+  let areaBranches;
+  if (area && area !== "all") {
+    if (!mongoose.isValidObjectId(area)) {
+      return sendSuccess(res, "Shop products retrieved successfully", []);
+    }
+
+    const location = await Location.findById(area).select("cumRap").lean();
+    if (!location) {
+      return sendSuccess(res, "Shop products retrieved successfully", []);
+    }
+    areaBranches = location.cumRap;
   }
 
-  if (theater) {
-    query.theater = theater;
-  }
-  
-  if (productType) {
-    query.productType = productType;
+  let theaterBranch;
+  if (theater && theater !== "all") {
+    if (!mongoose.isValidObjectId(theater)) {
+      return sendSuccess(res, "Shop products retrieved successfully", []);
+    }
+
+    const selectedTheater = await Theater.findById(theater)
+      .select("branch")
+      .lean();
+    if (!selectedTheater) {
+      return sendSuccess(res, "Shop products retrieved successfully", []);
+    }
+    theaterBranch = selectedTheater.branch;
   }
 
-  let sortQuery = { createdAt: -1 }; 
-  if (priceSort) {
-    const sortOrder = priceSort.toLowerCase() === "asc" ? 1 : -1;
-    sortQuery = { price: sortOrder };
+  if (theaterBranch && areaBranches && !areaBranches.includes(theaterBranch)) {
+    return sendSuccess(res, "Shop products retrieved successfully", []);
   }
+
+  const branches = theaterBranch ? [theaterBranch] : areaBranches;
+  if (branches) {
+    if (branches.length === 0) {
+      return sendSuccess(res, "Shop products retrieved successfully", []);
+    }
+
+    query.$or = branches.map((branch) => ({
+      [`stockByBranch.${branch}`]: { $gt: 0 },
+    }));
+  }
+
+  const sortQuery =
+    priceSort?.toLowerCase() === "asc"
+      ? { price: 1 }
+      : priceSort?.toLowerCase() === "desc"
+        ? { price: -1 }
+        : { createdAt: -1 };
 
   const shops = await Shop.find(query)
-    .select("title banner price area theater productType") 
+    .select(
+      "title banner price description stock stockByBranch limitPerCustomer expiryDays options highlight",
+    )
     .sort(sortQuery)
     .lean();
 

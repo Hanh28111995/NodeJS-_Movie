@@ -1,9 +1,19 @@
 import mongoose from "mongoose";
 
+const choiceSchema = new mongoose.Schema(
+  {
+    value: { type: String, required: true },
+    label: { type: String, required: true },
+    price: { type: Number, default: 0 },
+    addPrice: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
 const optionSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    choices: [{ type: String }],
+    choices: [choiceSchema],
     required: { type: Boolean, default: false },
   },
   { _id: false },
