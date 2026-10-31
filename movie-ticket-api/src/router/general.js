@@ -232,30 +232,50 @@ generalRouter.get("/shop/all", asyncHandler(async (req, res) => {
 
   let areaBranches;
   if (area && area !== "all") {
-    if (!mongoose.isValidObjectId(area)) {
-      return sendSuccess(res, "Shop products retrieved successfully", []);
-    }
-
-    const location = await Location.findById(area).select("cumRap").lean();
+    const location = mongoose.isValidObjectId(area)
+      ? await Location.findById(area).select("cumRap").lean()
+      : await Location.findOne({
+          vungMien: { $regex: `^${area.trim()}$`, $options: "i" },
+        })
+          .select("cumRap")
+          .lean();
     if (!location) {
       return sendSuccess(res, "Shop products retrieved successfully", []);
     }
-    areaBranches = location.cumRap;
+
+    const districts = location.cumRap
+      .map((district) => district.trim())
+      .filter(Boolean);
+    if (districts.length === 0) {
+      return sendSuccess(res, "Shop products retrieved successfully", []);
+    }
+
+    const cinemas = await Cinema.find({
+      $or: districts.map((district) => ({
+        address: {
+          $regex: district.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+          $options: "i",
+        },
+      })),
+    })
+      .select("branch")
+      .lean();
+    areaBranches = [...new Set(cinemas.map((cinema) => cinema.branch))];
   }
 
   let theaterBranch;
   if (theater && theater !== "all") {
-    if (!mongoose.isValidObjectId(theater)) {
-      return sendSuccess(res, "Shop products retrieved successfully", []);
+    if (mongoose.isValidObjectId(theater)) {
+      const selectedTheater = await Theater.findById(theater)
+        .select("branch")
+        .lean();
+      if (!selectedTheater) {
+        return sendSuccess(res, "Shop products retrieved successfully", []);
+      }
+      theaterBranch = selectedTheater.branch;
+    } else {
+      theaterBranch = theater.trim();
     }
-
-    const selectedTheater = await Theater.findById(theater)
-      .select("branch")
-      .lean();
-    if (!selectedTheater) {
-      return sendSuccess(res, "Shop products retrieved successfully", []);
-    }
-    theaterBranch = selectedTheater.branch;
   }
 
   if (theaterBranch && areaBranches && !areaBranches.includes(theaterBranch)) {
