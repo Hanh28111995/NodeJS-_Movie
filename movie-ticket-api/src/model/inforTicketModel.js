@@ -7,6 +7,11 @@ const inforTicketSchema = new mongoose.Schema(
       ref: "users",
       required: [true, "ID người dùng là bắt buộc"],      
     },
+    staff_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      default: undefined,
+    },
     id_movie: {
       type: mongoose.Schema.Types.String,
       ref: "movies",
@@ -35,6 +40,15 @@ const inforTicketSchema = new mongoose.Schema(
       enum: ["Pending", "Completed", "Failed"],
       default: "Pending",
     },
+    payment_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "payments",
+      default: undefined,
+    },
+    paidAt: {
+      type: Date,
+      default: undefined,
+    },
     transactionId: {
       type: String,
       required: true,
@@ -53,7 +67,9 @@ const inforTicketSchema = new mongoose.Schema(
 );
 
 inforTicketSchema.index({ user_id: 1, createdAt: -1 });
+inforTicketSchema.index({ staff_id: 1, createdAt: -1 });
 inforTicketSchema.index({ paymentStatus: 1 });
+inforTicketSchema.index({ paymentStatus: 1, paidAt: 1 });
 
 const InforTicket = mongoose.model("infoTicket", inforTicketSchema);
 

@@ -13,7 +13,11 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
       required: [true, "ID người dùng là bắt buộc"],
-      unique: true,
+    },
+    staff_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      default: undefined,
     },
     items: [
       {
@@ -72,6 +76,15 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Completed", "Failed", "Cancelled"],
       default: "Pending",
     },
+    payment_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "payments",
+      default: undefined,
+    },
+    paidAt: {
+      type: Date,
+      default: undefined,
+    },
     transactionId: {
       type: String,
       unique: true,
@@ -87,6 +100,8 @@ const orderSchema = new mongoose.Schema(
 
 // Tạo index để tối ưu truy vấn lịch sử mua hàng của user và sắp xếp theo thời gian mới nhất
 orderSchema.index({ user_id: 1, createdAt: -1 });
+orderSchema.index({ staff_id: 1, createdAt: -1 });
+orderSchema.index({ paymentStatus: 1, paidAt: 1 });
 
 const Orders = mongoose.model("orders", orderSchema);
 

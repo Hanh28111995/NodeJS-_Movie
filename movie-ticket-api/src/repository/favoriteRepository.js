@@ -5,6 +5,13 @@ export const getByUserId = (userId) => FavoriteUsers.findOne({ user_id: userId }
 export const createProfile = (userId) =>
   FavoriteUsers.create({ user_id: userId });
 
+export const addToCart = (userId, item) =>
+  FavoriteUsers.findOneAndUpdate(
+    { user_id: userId },
+    { $addToSet: { cart: item } },
+    { new: true, runValidators: true },
+  );
+
 // toggle: dùng update với $push/$pull qua filter, trả doc mới
 export const toggleArrayItem = (userId, field, itemId) =>
   FavoriteUsers.findOneAndUpdate(

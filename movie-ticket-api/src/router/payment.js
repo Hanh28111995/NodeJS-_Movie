@@ -6,6 +6,7 @@ import {
   vnpayReturn,
   createMomoPayment,
   momoReturn,
+  confirmCartCashPayment,
 } from "../controller/payment/paymentController.js";
 import { verifyToken } from "../middleware/index.js";
 
@@ -13,6 +14,11 @@ const paymentRouter = express.Router();
 
 // Cash Payment
 paymentRouter.post("/cash", verifyToken, cashConfirmPayment);
+paymentRouter.post(
+  "/cart/:paymentId/cash/confirm",
+  verifyToken,
+  confirmCartCashPayment,
+);
 
 // Payment Status Check
 paymentRouter.get("/status/:id", verifyToken, checkTicketPaymentStatus);

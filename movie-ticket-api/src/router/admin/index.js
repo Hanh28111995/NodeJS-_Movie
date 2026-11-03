@@ -13,6 +13,8 @@ import adminBannerRouter from "./banner.js";
 import scheduleGenRouter from "./schedulteGen.js";
 import adminOrderRouter from "./order.js";
 import adminCouponRouter from "./coupon.js";
+import adminShiftRouter from "./shift.js";
+import adminStaffShiftRouter from "./staffShift.js";
 
 const adminRouter = express.Router();
 
@@ -28,6 +30,8 @@ adminRouter.use("/promotion", adminPromotionRouter);
 adminRouter.use("/shop", adminShopRouter);
 adminRouter.use("/banner", adminBannerRouter);
 adminRouter.use("/order", adminOrderRouter);
+adminRouter.use("/shift", adminShiftRouter);
+adminRouter.use("/staff-shift", adminStaffShiftRouter);
 adminRouter.use("/coupon", adminCouponRouter);
 
 

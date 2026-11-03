@@ -1,5 +1,6 @@
-import { sendSuccess, sendError } from "../../helper/client.js";
+import { sendSuccess, sendError, sendServerError } from "../../helper/client.js";
 import * as ticketService from "../../service/ticketService.js";
+import * as favoriteService from "../../service/favoriteService.js";
 import asyncHandler from "../../util/asyncHandler.js";
 
 export const getMytickets = asyncHandler(async (req, res) => {
@@ -10,12 +11,23 @@ export const getMytickets = asyncHandler(async (req, res) => {
 
 export const bookMytickets = asyncHandler(async (req, res) => {
   const userId = req.user.id;
-  const ticketData = { ...req.body, user_id: userId };
+  const ticketData = {
+    ...req.body,
+    user_id: userId,
+    staff_id: undefined,
+  };
+  let newTicket;
   try {
-    const newTicket = await ticketService.createTicket(ticketData);
-    return sendSuccess(res, "Ticket booked successfully", newTicket);
+    newTicket = await ticketService.createTicket(ticketData);
   } catch (err) {
-    return sendError(res, err.message, 409);
+    return sendError(res, err.message, err.statusCode || 409);
+  }
+
+  try {
+    await favoriteService.addTicketToCart(userId, newTicket._id);
+    return sendSuccess(res, "Ticket booked successfully", newTicket);
+  } catch {
+    return sendServerError(res);
   }
 });
 

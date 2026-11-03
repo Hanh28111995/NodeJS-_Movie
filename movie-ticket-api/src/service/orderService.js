@@ -3,13 +3,16 @@ import * as couponRepository from "../repository/couponRepository.js";
 import { calculateDiscount } from "./couponService.js";
 import { sendError, sendSuccess, sendServerError } from "../helper/client.js";
 import { releaseCouponHold, tryHoldCoupon } from "./couponHoldService.js";
+import * as favoriteService from "./favoriteService.js";
 
 // Tạo đơn: items từ body, tính tiền, áp coupon
-export const createNewOrder = async (res, body) => {
+export const createNewOrder = async (res, body, actor = {}) => {
   try {
     const { user_id, items, couponCode } = body;
     if (!user_id || !Array.isArray(items) || items.length === 0)
       return sendError(res, "Thiếu user hoặc danh sách items", 400);
+    if (actor.role === "staff" && !actor.id)
+      return sendError(res, "Không xác định được staff thực hiện", 401);
 
     const subtotal = items.reduce(
       (sum, it) => sum + it.unitPrice * it.quantity,
@@ -49,7 +52,13 @@ export const createNewOrder = async (res, body) => {
         couponDiscount: discount,
         totalAmount: subtotal - discount,
         paymentMethod: body.paymentMethod,
+        staff_id: actor.role === "staff" ? actor.id : undefined,
       });
+      try {
+        await favoriteService.addOrderToCart(user_id, order._id);
+      } catch {
+        return sendServerError(res);
+      }
       return sendSuccess(res, "Tạo đơn hàng thành công", order);
     } catch {
       await releaseCouponHold(couponCode, user_id);   // ← thêm: DB lỗi cũng phải thả hold

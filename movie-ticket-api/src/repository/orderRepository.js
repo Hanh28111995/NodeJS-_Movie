@@ -17,7 +17,17 @@ export const getAllOrders = (page = 1, pageSize = 20) =>
 export const countOrders = () => Orders.countDocuments();
 
 export const updateOrderPayment = (id, { paymentStatus, transactionId }) =>
-  Orders.findByIdAndUpdate(id, { paymentStatus, transactionId }, { new: true });
+  Orders.findByIdAndUpdate(
+    id,
+    {
+      $set: { paymentStatus, transactionId },
+      $min: { paidAt: new Date() },
+    },
+    { new: true },
+  );
 
-export const updateOrderStatus = (id, paymentStatus) =>
-  Orders.findByIdAndUpdate(id, { paymentStatus }, { new: true });
+export const updateOrderStatus = (id, paymentStatus) => {
+  const update = { $set: { paymentStatus } };
+  if (paymentStatus === "Completed") update.$min = { paidAt: new Date() };
+  return Orders.findByIdAndUpdate(id, update, { new: true });
+};

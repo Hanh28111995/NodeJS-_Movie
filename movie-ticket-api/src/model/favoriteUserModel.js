@@ -37,6 +37,24 @@ const favoriteUserSchema = new mongoose.Schema(
         ref: "movies", 
       },
     ],
+    cart: {
+      type: [
+        new mongoose.Schema(
+          {
+            ticket_id: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "infoTicket",
+            },
+            order_id: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "orders",
+            },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

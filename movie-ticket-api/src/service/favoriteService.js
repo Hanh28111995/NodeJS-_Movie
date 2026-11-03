@@ -8,6 +8,13 @@ const getOrCreate = async (userId) =>
   (await favoriteRepository.getByUserId(userId)) ||
   favoriteRepository.createProfile(userId);
 
+const addCartItem = async (userId, item) => {
+  await getOrCreate(userId);
+  const profile = await favoriteRepository.addToCart(userId, item);
+  if (!profile) throw new Error("Không thể cập nhật giỏ hàng");
+  return profile;
+};
+
 export const getProfile = async (res, userId) => {
   try {
     const profile = await getOrCreate(userId);
@@ -22,6 +29,12 @@ export const toggleFavorite = async (res, userId, field, itemId) => {
     return sendSuccess(res, "Cập nhật yêu thích thành công", profile);
   } catch { return sendServerError(res); }
 };
+
+export const addTicketToCart = (userId, ticketId) =>
+  addCartItem(userId, { ticket_id: ticketId });
+
+export const addOrderToCart = (userId, orderId) =>
+  addCartItem(userId, { order_id: orderId });
 
 export const earnPoints = async (userId, points) => {
   // gọi từ orderService khi đơn hoàn tất — không trả res

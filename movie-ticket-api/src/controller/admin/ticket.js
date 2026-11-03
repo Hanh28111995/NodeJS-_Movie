@@ -27,14 +27,17 @@ export const getTicketById = asyncHandler(async (req, res) => {
 });
 
 export const addTicket = asyncHandler(async (req, res) => {
-  const newTicket = await ticketService.createTicket(req.body);
+  const ticketData = { ...req.body, staff_id: undefined };
+  const newTicket = await ticketService.createTicket(ticketData);
   return sendSuccess(res, "Ticket created successfully", newTicket);
 });
 
 export const updateTicket = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const updatedTicket = await ticketService.updateTicket(id, req.body);
+    const updateData = { ...req.body };
+    delete updateData.staff_id;
+    const updatedTicket = await ticketService.updateTicket(id, updateData);
     return sendSuccess(res, "Ticket updated successfully", updatedTicket);
   } catch (error) {
     if (error.statusCode) {

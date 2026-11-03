@@ -136,10 +136,18 @@ export const confirmTicket = async (ticketId) => {
     error.statusCode = 404;
     throw error;
   }
+  if (ticket.payment_id) {
+    const error = new Error("Ticket is reserved by a cart payment");
+    error.statusCode = 409;
+    throw error;
+  }
 
   await ticketRepository.updateOneByCondition(
     { _id: ticketId },
-    { $set: { paymentStatus: "Completed" } },
+    {
+      $set: { paymentStatus: "Completed" },
+      $min: { paidAt: new Date() },
+    },
   );
 
   await Notification.findOneAndUpdate(
@@ -209,10 +217,18 @@ export const completeTicket = async (ticketId) => {
     error.statusCode = 404;
     throw error;
   }
+  if (ticket.payment_id) {
+    const error = new Error("Ticket is reserved by a cart payment");
+    error.statusCode = 409;
+    throw error;
+  }
 
   await ticketRepository.updateOneByCondition(
     { _id: ticketId },
-    { $set: { paymentStatus: "Completed" } },
+    {
+      $set: { paymentStatus: "Completed" },
+      $min: { paidAt: new Date() },
+    },
   );
 
   await Notification.findOneAndUpdate(

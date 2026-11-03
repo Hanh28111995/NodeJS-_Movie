@@ -26,8 +26,15 @@ export const createCustomerByStaff = asyncHandler(async (req, res) => {
 
 // Staff đặt vé hộ khách
 export const bookForCustomer = asyncHandler(async (req, res) => {
-  // Logic này dùng chung createTicket nhưng có thể thêm note: "Staff booked"
-  const ticketData = { ...req.body, bookingSource: "Staff" };
+  const staffId = req.user?.role === "staff" ? req.user.id : undefined;
+  if (req.user?.role === "staff" && !staffId)
+    return sendError(res, "Không xác định được staff thực hiện", 401);
+
+  const ticketData = {
+    ...req.body,
+    bookingSource: "Staff",
+    staff_id: staffId,
+  };
   const ticket = await ticketService.createTicket(ticketData);
   return sendSuccess(res, "Đặt vé thành công", ticket);
 });

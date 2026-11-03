@@ -6,6 +6,7 @@ import customerOrderRouter from "./order.js";
 import customerCouponRouter from "./coupon.js";
 import customerFavoriteRouter from "./favorite.js";
 import customerReviewRouter from "./review.js";
+import customerPaymentRouter from "./payment.js";
 import { getMyProfile, updateMyProfile } from "../../controller/customer/user.js";
 
 
@@ -20,5 +21,6 @@ customerRouter.use("/order", customerOrderRouter);
 customerRouter.use("/coupon", customerCouponRouter);
 customerRouter.use("/favorite", customerFavoriteRouter);
 customerRouter.use("/review", customerReviewRouter);
+customerRouter.use("/payment", customerPaymentRouter);
 
 export default customerRouter;
