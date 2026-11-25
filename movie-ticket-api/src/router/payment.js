@@ -31,4 +31,38 @@ paymentRouter.get("/return_vnpay", vnpayReturn);
 paymentRouter.post("/create_momo", verifyToken, createMomoPayment);
 paymentRouter.get("/return_momo", momoReturn);
 
+//check vercel connection
+
+// Check MoMo Sandbox connection
+paymentRouter.get("/test-momo", async (req, res) => {
+  try {
+    const endpoint = process.env.MOMO_ENDPOINT?.trim();
+
+    if (!endpoint) {
+      return res.status(500).json({
+        success: false,
+        message: "MOMO_ENDPOINT is not configured",
+      });
+    }
+
+    const response = await fetch(endpoint, {
+      method: "GET",
+    });
+
+    const rawData = await response.text();
+
+    return res.status(200).json({
+      success: true,
+      momoStatus: response.status,
+      contentType: response.headers.get("content-type"),
+      response: rawData.slice(0, 500),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
 export default paymentRouter;
