@@ -35,13 +35,12 @@ function calcTotalPrice(seatName = []) {
   return seatName.reduce((sum, seat) => sum + (Number(seat.price) || 0), 0);
 }
 
-// Tạo orderInfo từ seatName array — chỉ dùng ký tự alphanumeric để tránh lỗi chữ ký
 function buildOrderInfo(seatName = []) {
   const seatList = seatName
     .map((s) => s.seatNumber)
     .filter(Boolean)
-    .join(" ");
-  return `Thanh toan ve ${seatList}`.replace(/[^a-zA-Z0-9 ]/g, "");
+    .join("");
+  return `ThanhToanVe${seatList}`.replace(/[^a-zA-Z0-9]/g, "") || "ThanhToanVe";
 }
 
 // ==================== MOMO ====================
