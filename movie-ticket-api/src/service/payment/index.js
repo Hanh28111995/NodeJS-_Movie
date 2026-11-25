@@ -1,4 +1,3 @@
-import https from "https";
 import * as ticketRepository from "./../../service/ticketService.js";
 import * as couponService from "./../../service/couponService.js";
 import {
