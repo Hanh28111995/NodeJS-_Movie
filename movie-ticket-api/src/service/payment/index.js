@@ -12,7 +12,7 @@ import https from "https";
 function toSignData(obj) {
   return Object.keys(obj)
     .sort()
-    .map((k) => `\({k}=\){encodeURIComponent(obj[k]).replace(/%20/g, "+")}`)
+    .map((k) => `${k}=${encodeURIComponent(obj[k]).replace(/%20/g, "+")}`)
     .join("&");
 }
 
@@ -20,8 +20,28 @@ function toSignData(obj) {
 function toQueryString(obj) {
   return Object.keys(obj)
     .sort()
-    .map((k) => `\({k}=\){encodeURIComponent(obj[k])}`)
+    .map((k) => `${k}=${encodeURIComponent(obj[k])}`)
     .join("&");
+}
+
+function normalizeIpv4(rawIp = "") {
+  const firstIp = (
+    Array.isArray(rawIp) ? rawIp[0] : String(rawIp).split(",")[0]
+  )
+    .trim()
+    .replace(/^::ffff:/, "");
+  if (!firstIp || firstIp === "::1" || firstIp.includes(":")) {
+    return "127.0.0.1";
+  }
+  return firstIp;
+}
+
+function formatVnDate(date = new Date()) {
+  const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+  return vnDate
+    .toISOString()
+    .replace(/[-:T.Z]/g, "")
+    .slice(0, 14);
 }
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -85,12 +105,11 @@ export const PaymentService = {
           return sendError(res, "Không tính được tổng tiền vé", 400);
         }
 
-        // Định dạng: yyyyMMddHHmmss theo múi giờ Việt Nam (UTC+7)
-        const vnDate = new Date(Date.now() + 7 * 60 * 60 * 1000);
-        const createDate = vnDate
-          .toISOString()
-          .replace(/[-:T.Z]/g, "")
-          .slice(0, 14);
+        const now = new Date();
+        const createDate = formatVnDate(now);
+        const expireDate = formatVnDate(
+          new Date(now.getTime() + 15 * 60 * 1000),
+        );
         const orderId = `${ticketId}__${Date.now()}`;
         const orderInfo = buildOrderInfo(ticketData.seatName);
 
@@ -101,15 +120,11 @@ export const PaymentService = {
           process.env.VNP_RETURN_URL || VNP_RETURN_URL
         )?.trim();
 
-        // Lấy IP đầu tiên sạch sẽ của người dùng trên proxy / Vercel
-        const forwarded = req.headers["x-forwarded-for"];
-        const ipAddr =
-          (Array.isArray(forwarded)
-            ? forwarded[0]
-            : forwarded?.split(",")[0]?.trim()) ||
-          req.socket?.remoteAddress ||
-          req.connection?.remoteAddress ||
-          "127.0.0.1";
+        const ipAddr = normalizeIpv4(
+          req.headers["x-forwarded-for"] ||
+            req.socket?.remoteAddress ||
+            req.connection?.remoteAddress,
+        );
 
         if (!tmnCode || !hashSecret || !vnpUrl || !returnUrl) {
           console.error("[VNPay] Missing env configuration");
@@ -129,6 +144,7 @@ export const PaymentService = {
           vnp_ReturnUrl: returnUrl,
           vnp_IpAddr: ipAddr,
           vnp_CreateDate: createDate,
+          vnp_ExpireDate: expireDate,
         };
 
         const signData = toSignData(vnpParams);
@@ -398,6 +414,7 @@ export const PaymentService = {
     // MoMo redirect về đây sau khi thanh toán
     verifyReturn: async (res, query) => {
       try {
+        const momoCfg = getMomoConfig();
         const {
           partnerCode,
           orderId,
@@ -414,9 +431,23 @@ export const PaymentService = {
           signature,
         } = query;
 
-        const rawSignature = `accessKey=\({momoConfig.accessKey}&amount=\){amount}&extraData=\({extraData}&message=\){message}&orderId=\({orderId}&orderInfo=\){orderInfo}&orderType=\({orderType}&partnerCode=\){partnerCode}&payType=\({payType}&requestId=\){requestId}&responseTime=\({responseTime}&resultCode=\){resultCode}&transId=${transId}`;
+        const rawSignature =
+          `accessKey=${momoCfg.accessKey}` +
+          `&amount=${amount}` +
+          `&extraData=${extraData}` +
+          `&message=${message}` +
+          `&orderId=${orderId}` +
+          `&orderInfo=${orderInfo}` +
+          `&orderType=${orderType}` +
+          `&partnerCode=${partnerCode}` +
+          `&payType=${payType}` +
+          `&requestId=${requestId}` +
+          `&responseTime=${responseTime}` +
+          `&resultCode=${resultCode}` +
+          `&transId=${transId}`;
+
         const checkSignature = crypto
-          .createHmac("sha256", momoConfig.secretKey)
+          .createHmac("sha256", momoCfg.secretKey)
           .update(rawSignature)
           .digest("hex");
 
@@ -434,20 +465,22 @@ export const PaymentService = {
             ? await ticketRepository.completeTicket(ticketId)
             : null;
 
-          const uid = String(ticket.user_id?._id || ticket.user_id);
-          if (ticket && ticket.couponCode) {
-            await couponService.consumeCoupon(ticket.couponCode, uid);
+          if (ticket) {
+            const uid = String(ticket.user_id?._id || ticket.user_id);
+            if (ticket.couponCode) {
+              await couponService.consumeCoupon(ticket.couponCode, uid);
+            }
           }
 
           return res.redirect(
-            `\({FRONTEND_URL}/payment-result?status=success&method=momo&ticketId=\){ticketId}`,
+            `${FRONTEND_URL}/payment-result?status=success&method=momo&ticketId=${ticketId}`,
           );
         } else {
           const ticket = ticketId
             ? await ticketRepository.cancelTicket(ticketId)
             : null;
 
-          // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
+          // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount
           if (ticket && ticket.couponCode) {
             await couponService.releaseCouponHoldOnly(
               ticket.couponCode,
@@ -456,10 +489,11 @@ export const PaymentService = {
           }
 
           return res.redirect(
-            `\({FRONTEND_URL}/payment-result?status=failed&method=momo&code=\){resultCode}`,
+            `${FRONTEND_URL}/payment-result?status=failed&method=momo&code=${resultCode}`,
           );
         }
       } catch (err) {
+        console.error("[MoMo verifyReturn] ERROR:", err.message);
         return res.redirect(`${FRONTEND_URL}/payment-result?status=error`);
       }
     },
