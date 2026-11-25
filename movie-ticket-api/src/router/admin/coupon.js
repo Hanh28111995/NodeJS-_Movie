@@ -7,4 +7,5 @@ adminCouponRouter.post("/create", couponController.createCoupon);
 adminCouponRouter.put("/:id", couponController.updateCoupon);
 adminCouponRouter.post("/:id/reactivate", couponController.reactivateCoupon);
 adminCouponRouter.delete("/:id", couponController.deleteCoupon);
+adminCouponRouter.post("/validate", couponController.validateCoupon);
 export default adminCouponRouter;
