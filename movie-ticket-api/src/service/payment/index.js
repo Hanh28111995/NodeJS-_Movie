@@ -275,18 +275,18 @@ export const PaymentService = {
           signature,
           lang: "vi",
         });
-        
+
+        const url = new URL(momoCfg.endpoint);
         const options = {
-          hostname: "test-payment.momo.vn", // hoặc 'payment.momo.vn'
-          port: 443,
-          path: "/v2/gateway/api/create",
+          hostname: url.hostname,
+          port: url.port || 443,
+          path: `${url.pathname}${url.search}`,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": Buffer.byteLength(postData),
+            "Content-Length": Buffer.byteLength(body),
+            "User-Agent": "Mozilla/5.0",
             Accept: "application/json",
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           },
         };
 
