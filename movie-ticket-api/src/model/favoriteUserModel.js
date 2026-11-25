@@ -62,8 +62,6 @@ const favoriteUserSchema = new mongoose.Schema(
   }
 );
 
-favoriteUserSchema.index({ user_id: 1 });
-
 const FavoriteUsers = mongoose.model("favorite_users", favoriteUserSchema);
 
 export default FavoriteUsers;
