@@ -36,26 +36,14 @@ paymentRouter.get("/return_momo", momoReturn);
 // Check MoMo Sandbox connection
 paymentRouter.get("/test-momo", async (req, res) => {
   try {
-    const endpoint = process.env.MOMO_ENDPOINT?.trim();
+    const response = await fetch("https://api.ipify.org?format=json");
 
-    if (!endpoint) {
-      return res.status(500).json({
-        success: false,
-        message: "MOMO_ENDPOINT is not configured",
-      });
-    }
+    const data = await response.json();
 
-    const response = await fetch(endpoint, {
-      method: "GET",
-    });
-
-    const rawData = await response.text();
-
-    return res.status(200).json({
+    return res.json({
       success: true,
-      momoStatus: response.status,
-      contentType: response.headers.get("content-type"),
-      response: rawData.slice(0, 500),
+      outboundIp: data.ip,
+      message: "Vercel outbound IP detected",
     });
   } catch (error) {
     return res.status(500).json({
