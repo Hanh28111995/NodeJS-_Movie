@@ -16,10 +16,25 @@ const TZ = "Asia/Ho_Chi_Minh";
 
 // Helper: đầu ngày theo giờ VN
 const dayStart = (d) => dayjs(d).tz(TZ).startOf("day");
+
 // Helper: chuyển "HH:mm" -> dayjs trong ngày cho sẵn
 const slotToTime = (base, slot) => {
-  const [h, m] = slot.split(":").map(Number);
-  return base.hour(h).minute(m || 0).second(0).millisecond(0);
+  const parts = String(slot).split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1] ?? 0);
+
+  if (
+    Number.isNaN(h) ||
+    Number.isNaN(m) ||
+    h < 0 ||
+    h > 23 ||
+    m < 0 ||
+    m > 59
+  ) {
+    throw new Error(`Invalid time slot format: "${slot}"`);
+  }
+
+  return base.hour(h).minute(m).second(0).millisecond(0);
 };
 
 class ScheduleService {
@@ -39,9 +54,14 @@ class ScheduleService {
   }
 
   async updateConfig(data) {
-    const config = await ScheduleConfig.findOneAndUpdate({}, data, {
-      new: true,
-    });
+    const config = await ScheduleConfig.findOneAndUpdate(
+      {},
+      { $set: data },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
     if (!config) {
       const error = new Error("Configuration not found, use create first");
       error.statusCode = 404;
@@ -58,9 +78,9 @@ class ScheduleService {
     }
 
     const movies = (config.movies || []).filter((m) => m?.movie_id);
-    const theaters = (config.theaters || []).filter(
-      mongoose.Types.ObjectId.isValid,
-    );
+    const theaters = (config.theaters || [])
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => id.toString());
     const timeSlots = (config.timeSlots || []).filter(Boolean);
     const generateDays = Math.min(14, Math.max(1, config.generateDays ?? 3));
 
@@ -68,7 +88,7 @@ class ScheduleService {
       return { created: 0, skipped: 0, message: "Invalid configuration" };
     }
 
-    // ---- Load dữ liệu (dùng đúng method repo/model đang tồn tại) ----
+    // ---- Load dữ liệu ----
     const theaterDocs = await theaterRepository.findByIds(theaters);
     const allCinemas = await cinemaRepository.findAll();
     const cinemaMap = Object.fromEntries(
@@ -86,13 +106,15 @@ class ScheduleService {
     ];
     if (seatTypeIds.length) {
       const sts = await SeatType.find({ _id: { $in: seatTypeIds } }).lean();
-      sts.forEach((st) => (seatTypeMap[st._id.toString()] = st));
+      sts.forEach((st) => {
+        seatTypeMap[st._id.toString()] = st;
+      });
     }
 
     const movieIds = movies.map((m) => m.movie_id.toString());
     const movieDocs = await Movies.find({ _id: { $in: movieIds } }).lean();
-    const validMovieIds = movieDocs.map((m) => m._id.toString());
-    if (validMovieIds.length === 0) {
+    const validMovieIds = new Set(movieDocs.map((m) => m._id.toString()));
+    if (validMovieIds.size === 0) {
       return { created: 0, skipped: 0, message: "No movies exist" };
     }
 
@@ -103,6 +125,7 @@ class ScheduleService {
     for (let i = 0; i < generateDays; i++) {
       const day = today.add(i, "day");
       const dayStartNative = day.toDate();
+      const nextDayNative = day.add(1, "day").toDate();
 
       // Phim còn trong cửa sổ chiếu của ngày này
       const activeMovies = movies
@@ -113,7 +136,7 @@ class ScheduleService {
           if (e && day.isAfter(e, "day")) return false;
           return true;
         })
-        .filter((m) => validMovieIds.includes(m.movie_id.toString()));
+        .filter((m) => validMovieIds.has(m.movie_id.toString()));
 
       if (activeMovies.length === 0) continue;
 
@@ -136,23 +159,22 @@ class ScheduleService {
           continue;
         }
 
-        // 1) Suất đã tồn tại trong ngày này ở theater này → không đụng.
+        // Lấy các suất đã có trong ngày để chỉ bỏ qua đúng slot bị trùng
         const existing = await Showtime.find({
           theater: theaterId,
           startTime: {
             $gte: dayStartNative,
-            $lt: day.add(1, "day").toDate(),
+            $lt: nextDayNative,
           },
         })
-          .select("_id")
+          .select("startTime")
           .lean();
 
-        if (existing.length > 0) {
-          skipped += timeSlots.length;
-          continue;
-        }
+        const existingTimestamps = new Set(
+          existing.map((item) => new Date(item.startTime).getTime()),
+        );
 
-        // 2) Tạo seats template với price/color từ seatType
+        // Tạo seats template với price/color từ seatType
         const seatsTemplate = theaterDoc.seats.map((s) => {
           const st = seatTypeMap[s.seatType?.toString()];
           return {
@@ -164,33 +186,53 @@ class ScheduleService {
           };
         });
 
-        // 3) Round-robin phim theo theater
-        const movieWindowList = activeMovies;
-        const dayOffset = theaterDocs.findIndex(
-          (t) => t._id.toString() === theaterId,
+        // Round-robin phim theo theater
+        const dayOffset = Math.max(
+          0,
+          theaterDocs.findIndex((t) => t._id.toString() === theaterId),
         );
 
-        const toInsert = timeSlots.map((slot, idx) => {
+        const toInsert = [];
+        for (let idx = 0; idx < timeSlots.length; idx++) {
+          const slot = timeSlots[idx];
+          const startDate = slotToTime(day, slot).toDate();
+
+          if (existingTimestamps.has(startDate.getTime())) {
+            skipped++;
+            continue;
+          }
+
           const movieWindow =
-            movieWindowList[(idx + dayOffset) % movieWindowList.length];
-          return {
+            activeMovies[(idx + dayOffset) % activeMovies.length];
+
+          toInsert.push({
             id_movie: movieWindow.movie_id,
             cinema: cinemaId,
             theater: theaterId,
-            startTime: slotToTime(day, slot).toDate(),
+            startTime: startDate,
             seats: seatsTemplate,
-          };
-        });
+          });
+        }
 
-        // ⭐ Index unique theater+startTime bảo vệ: chạy song song không nhân bản
+        if (toInsert.length === 0) continue;
+
+        // Index unique (theater + startTime) bảo vệ chống nhân bản khi chạy song song
         try {
           const inserted = await Showtime.insertMany(toInsert, {
             ordered: false,
           });
           created += inserted.length;
         } catch (err) {
-          if (err?.code === 11000) {
-            skipped += toInsert.length; // trùng → đã có, bỏ qua
+          const isDuplicateError =
+            err?.code === 11000 ||
+            err?.name === "MongoBulkWriteError" ||
+            err?.writeErrors?.some((e) => e.code === 11000);
+
+          if (isDuplicateError) {
+            const insertedCount =
+              err?.insertedDocs?.length ?? err?.result?.nInserted ?? 0;
+            created += insertedCount;
+            skipped += Math.max(0, toInsert.length - insertedCount);
           } else {
             throw err;
           }
