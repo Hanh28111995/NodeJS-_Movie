@@ -116,10 +116,7 @@ export const PaymentService = {
         const tmnCode = process.env.VNP_TMNCODE?.trim();
         const hashSecret = process.env.VNP_HASHSECRET?.trim();
         const vnpUrl = process.env.VNP_URL?.trim();
-        const returnUrl = (
-          process.env.VNP_RETURN_URL || VNP_RETURN_URL
-        )?.trim();
-
+        const returnUrl = VNP_RETURN_URL;
         const ipAddr = normalizeIpv4(
           req.headers["x-forwarded-for"] ||
             req.socket?.remoteAddress ||
