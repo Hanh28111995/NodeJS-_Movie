@@ -48,15 +48,14 @@ function buildOrderInfo(seatName = []) {
 const MOMO_RETURN_URL =
   "https://node-js-movie.vercel.app/api/payment/return_momo";
 
-const momoConfig = {
-  partnerCode: process.env.MOMO_PARTNER_CODE,
-  accessKey: process.env.MOMO_ACCESS_KEY,
-  secretKey: process.env.MOMO_SECRET_KEY,
-  endpoint: process.env.MOMO_ENDPOINT,
-  // cả redirectUrl và ipnUrl đều trỏ về BE để verify, BE sẽ redirect sang FE sau
+const getMomoConfig = () => ({
+  partnerCode: process.env.MOMO_PARTNER_CODE?.trim(),
+  accessKey: process.env.MOMO_ACCESS_KEY?.trim(),
+  secretKey: process.env.MOMO_SECRET_KEY?.trim(),
+  endpoint: process.env.MOMO_ENDPOINT?.trim(),
   redirectUrl: MOMO_RETURN_URL,
   ipnUrl: MOMO_RETURN_URL,
-};
+});
 
 export const PaymentService = {
   // ==================== CASH ====================
@@ -204,7 +203,9 @@ export const PaymentService = {
     createPaymentUrl: async (res, ticketData) => {
       try {
         const ticketId = (ticketData?._id || ticketData?.id)?.toString();
-        if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
+        if (!ticketId) {
+          return sendError(res, "Thiếu ticket id", 400);
+        }
 
         const rawAmount =
           ticketData?.finalAmount ??
@@ -216,36 +217,52 @@ export const PaymentService = {
           return sendError(res, "Không tính được tổng tiền vé", 400);
         }
 
+        const momoCfg = getMomoConfig();
+        if (
+          !momoCfg.partnerCode ||
+          !momoCfg.accessKey ||
+          !momoCfg.secretKey ||
+          !momoCfg.endpoint
+        ) {
+          console.error("[MoMo] Missing env configuration:", {
+            hasPartnerCode: Boolean(momoCfg.partnerCode),
+            hasAccessKey: Boolean(momoCfg.accessKey),
+            hasSecretKey: Boolean(momoCfg.secretKey),
+            hasEndpoint: Boolean(momoCfg.endpoint),
+          });
+          return sendError(res, "Cấu hình MoMo chưa đầy đủ", 500);
+        }
+
         const amount = String(numericAmount);
         const orderId = `${ticketId}__${Date.now()}`;
         const requestId = orderId;
-        const orderInfo = buildOrderInfo(ticketData?.seatName);
+        const orderInfo =
+          buildOrderInfo(ticketData?.seatName) || "Thanh toan ve";
         const extraData = "";
         const requestType = "payWithMethod";
-
-        const redirectUrl = momoConfig.redirectUrl || MOMO_RETURN_URL;
-        const ipnUrl = momoConfig.ipnUrl || redirectUrl;
+        const redirectUrl = momoCfg.redirectUrl || MOMO_RETURN_URL;
+        const ipnUrl = momoCfg.ipnUrl || redirectUrl;
 
         const rawSignature =
-          `accessKey=${momoConfig.accessKey}` +
+          `accessKey=${momoCfg.accessKey}` +
           `&amount=${amount}` +
           `&extraData=${extraData}` +
           `&ipnUrl=${ipnUrl}` +
           `&orderId=${orderId}` +
           `&orderInfo=${orderInfo}` +
-          `&partnerCode=${momoConfig.partnerCode}` +
+          `&partnerCode=${momoCfg.partnerCode}` +
           `&redirectUrl=${redirectUrl}` +
           `&requestId=${requestId}` +
           `&requestType=${requestType}`;
 
         const signature = crypto
-          .createHmac("sha256", momoConfig.secretKey)
+          .createHmac("sha256", momoCfg.secretKey)
           .update(rawSignature)
           .digest("hex");
 
         const body = JSON.stringify({
-          partnerCode: momoConfig.partnerCode,
-          accessKey: momoConfig.accessKey,
+          partnerCode: momoCfg.partnerCode,
+          accessKey: momoCfg.accessKey,
           requestId,
           amount,
           orderId,
@@ -258,7 +275,7 @@ export const PaymentService = {
           lang: "vi",
         });
 
-        const url = new URL(momoConfig.endpoint);
+        const url = new URL(momoCfg.endpoint);
         const options = {
           hostname: url.hostname,
           port: url.port || 443,
@@ -271,22 +288,39 @@ export const PaymentService = {
         };
 
         return await new Promise((resolve) => {
+          let settled = false;
+          const done = (fn) => {
+            if (!settled) {
+              settled = true;
+              resolve(fn());
+            }
+          };
+
           const request = https.request(options, (response) => {
             let data = "";
             response.on("data", (chunk) => {
               data += chunk;
             });
+
             response.on("end", () => {
               try {
                 const result = JSON.parse(data);
                 if (Number(result.resultCode) === 0 && result.payUrl) {
-                  return resolve(
+                  return done(() =>
                     sendSuccess(res, "Tạo link MoMo thành công", {
                       paymentUrl: result.payUrl,
                     }),
                   );
                 }
-                return resolve(
+
+                console.warn("[MoMo createPaymentUrl rejected]:", {
+                  statusCode: response.statusCode,
+                  resultCode: result.resultCode,
+                  message: result.message,
+                  orderId,
+                });
+
+                return done(() =>
                   sendError(
                     res,
                     result.message || "MoMo từ chối tạo giao dịch",
@@ -294,7 +328,12 @@ export const PaymentService = {
                   ),
                 );
               } catch (parseErr) {
-                return resolve(
+                console.error("[MoMo 502 parse error]:", {
+                  statusCode: response.statusCode,
+                  rawData: data,
+                  error: parseErr.message,
+                });
+                return done(() =>
                   sendError(res, "Phản hồi từ MoMo không hợp lệ", 502),
                 );
               }
@@ -303,7 +342,11 @@ export const PaymentService = {
 
           request.setTimeout(8000, () => {
             request.destroy();
-            resolve(
+            console.error("[MoMo 504 timeout]:", {
+              orderId,
+              endpoint: momoCfg.endpoint,
+            });
+            done(() =>
               sendError(
                 res,
                 "Cổng thanh toán MoMo phản hồi quá lâu (timeout)",
@@ -313,7 +356,12 @@ export const PaymentService = {
           });
 
           request.on("error", (reqErr) => {
-            resolve(
+            console.error("[MoMo 502 network error]:", {
+              message: reqErr.message,
+              code: reqErr.code,
+              endpoint: momoCfg.endpoint,
+            });
+            done(() =>
               sendError(res, `Lỗi kết nối tới MoMo: ${reqErr.message}`, 502),
             );
           });
@@ -322,6 +370,7 @@ export const PaymentService = {
           request.end();
         });
       } catch (err) {
+        console.error("[MoMo createPaymentUrl unexpected error]:", err);
         return sendServerError(res);
       }
     },
