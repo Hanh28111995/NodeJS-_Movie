@@ -21,318 +21,420 @@ const generalRouter = express.Router();
 
 // Helper để thêm cache header: 5 phút cache, 30 giây revalidate ngầm
 const addCacheHeader = (res) => {
-  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=30');
+  res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=30");
 };
 
-generalRouter.get("/showingMovies", cacheMiddleware("cache:showingMovies", 300) ,asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const movieIds = await ScheduleConfig.distinct("movies.movie_id", { isActive: true });
-  const movies = await Movie.find({ showing: true, _id: { $in: movieIds } })
-    .select("title banner duration genre releaseDate")
-    .lean();
-  return sendSuccess(res, "Now showing movies retrieved successfully", movies);
-}));
+generalRouter.get(
+  "/showingMovies",
+  cacheMiddleware("cache:showingMovies", 300),
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const movieIds = await ScheduleConfig.distinct("movies.movie_id", {
+      isActive: true,
+    });
+    const movies = await Movie.find({ showing: true, _id: { $in: movieIds } })
+      .select("title banner duration genre releaseDate")
+      .lean();
+    return sendSuccess(
+      res,
+      "Now showing movies retrieved successfully",
+      movies,
+    );
+  }),
+);
 
-generalRouter.get("/comingMovies", cacheMiddleware("cache:comingMovies", 300),asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const movieIds = await ScheduleConfig.distinct("movies.movie_id", { isActive: true });
-  const movies = await Movie.find({ coming: true, _id: { $in: movieIds } })
-    .select("title banner duration genre releaseDate")
-    .lean();
-  return sendSuccess(res, "Coming soon movies retrieved successfully", movies);
-}));
+generalRouter.get(
+  "/comingMovies",
+  cacheMiddleware("cache:comingMovies", 300),
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const movieIds = await ScheduleConfig.distinct("movies.movie_id", {
+      isActive: true,
+    });
+    const movies = await Movie.find({ coming: true, _id: { $in: movieIds } })
+      .select("title banner duration genre releaseDate")
+      .lean();
+    return sendSuccess(
+      res,
+      "Coming soon movies retrieved successfully",
+      movies,
+    );
+  }),
+);
 
-generalRouter.get("/showBanners", cacheMiddleware("cache:banners", 600),asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const banners = await Banner.find()
-    .sort({ createdAt: -1 })
-    .lean();
+generalRouter.get(
+  "/showBanners",
+  cacheMiddleware("cache:banners", 600),
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const banners = await Banner.find().sort({ createdAt: -1 }).lean();
 
-  return sendSuccess(res, "Banners retrieved successfully", banners);
-}));
+    return sendSuccess(res, "Banners retrieved successfully", banners);
+  }),
+);
 
-generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
-  const { title } = req.query;
-  // Lấy config lịch chiếu đang active → lọc phim còn trong cửa sổ chiếu (startDate ≤ now ≤ endDate)
-  const config = await ScheduleConfig.findOne({ isActive: true }).lean();
-  const now = new Date();
-  const movieIds = (config?.movies || [])
-    .filter((m) => {
-      const s = m.startDate ? new Date(m.startDate) : null;
-      const e = m.endDate ? new Date(m.endDate) : null;
-      if (s && now < s) return false;
-      if (e && now > e) return false;
-      return true;
-    })
-    .map((m) => m.movie_id)
-    .filter(Boolean);
+generalRouter.get(
+  "/movie/all",
+  asyncHandler(async (req, res) => {
+    const { title } = req.query;
+    // Lấy config lịch chiếu đang active → lọc phim còn trong cửa sổ chiếu (startDate ≤ now ≤ endDate)
+    const config = await ScheduleConfig.findOne({ isActive: true }).lean();
+    const now = new Date();
+    const movieIds = (config?.movies || [])
+      .filter((m) => {
+        const s = m.startDate ? new Date(m.startDate) : null;
+        const e = m.endDate ? new Date(m.endDate) : null;
+        if (s && now < s) return false;
+        if (e && now > e) return false;
+        return true;
+      })
+      .map((m) => m.movie_id)
+      .filter(Boolean);
 
-  if (movieIds.length === 0) {
-    return sendSuccess(res, "All movies retrieved successfully", []);
-  }
-
-  const query = { _id: { $in: movieIds } };
-  if (title) query.title = { $regex: title, $options: "i" };
-
-  const movies = await Movie.find(query)
-    .select("_id title banner releaseDate coming showing")
-    .sort({ releaseDate: -1 })
-    .lean();
-
-  return sendSuccess(res, "All movies retrieved successfully", movies);
-}));
-
-generalRouter.get("/movie/:id", asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const movie = await Movie.findOne({
-    $or: [
-      { _id: id },
-      ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : [])
-    ]
-  }).lean();
-
-  if (!movie) return sendError(res, "Movie not found", 404);
-  return sendSuccess(res, "Movie retrieved successfully", movie);
-}));
-
-generalRouter.get("/cinema", cacheMiddleware("cache:cinemas", 600), asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const cinemas = await Cinema.find().lean();
-  if (res.sendCached) return res.sendCached("All cinemas retrieved successfully", cinemas);
-  return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
-}));
-
-generalRouter.get("/cinema/:id", asyncHandler(async (req, res) => {
-  try {
-    const cinema = await cinemaService.getCinemaDetail(req.params.id);
-    return sendSuccess(res, "Cinema retrieved successfully", cinema);
-  } catch (error) {
-    if (error.statusCode) return sendError(res, error.message, error.statusCode);
-    throw error;
-  }
-}));
-
-generalRouter.get("/cinemaBranches", asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const { location } = req.query;
-
-  let query = {};
-  if (location) {
-    query.address = { $regex: location, $options: "i" };
-  }
-
-  const cinemas = await Cinema.find(query)
-    .select("branch cinemaName address coordinates")
-    .lean();
-
-  return sendSuccess(res, "Cinema branches retrieved successfully", cinemas);
-}));
-
-generalRouter.get("/locations", cacheMiddleware("cache:locations", 600), asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const locations = await Location.find().sort({ _id: 1 }).lean();
-  if (res.sendCached) return res.sendCached("Locations retrieved successfully", locations);
-  return sendSuccess(res, "Locations retrieved successfully", locations);
-}));
-
-generalRouter.get("/theaterByCinema", cacheMiddleware("cache:theaterByCinema", 300), asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const theaters = await Cinema.find().populate("theaters").lean();
-  if (res.sendCached) return res.sendCached("All theaters retrieved successfully", theaters);
-  return sendSuccess(res, "All theaters retrieved successfully", theaters);
-}));
-
-generalRouter.get("/theaters/:id", asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const theaterTarget = await Theater.findById(id).lean();
-  if (!theaterTarget) return sendError(res, "Theater not found", 404);
-  return sendSuccess(res, "Theater retrieved successfully", theaterTarget);
-}));
-
-generalRouter.get("/showtime/filter", asyncHandler(async (req, res) => {
-  const { branch, date, idMovie } = req.query;
-
-  let conditions = [];
-
-  if (idMovie) {
-    conditions.push({ id_movie: idMovie });
-  }
-
-  if (branch) {
-    const theaterIds = await Theater.find({
-      $or: [{ branch: branch }, { cinemaName: branch }]
-    }).distinct("_id");
-    if (theaterIds.length === 0) {
-      return sendSuccess(res, "Filtered showtimes retrieved successfully", []);
+    if (movieIds.length === 0) {
+      return sendSuccess(res, "All movies retrieved successfully", []);
     }
-    conditions.push({ theater: { $in: theaterIds } });
-  }
 
-  if (date) {
-    const d1 = new Date(date);
-    const d2 = new Date(date);
-    d2.setDate(d2.getDate() + 1);
-    conditions.push({ startTime: { $gte: d1, $lt: d2 } });
-  }
+    const query = { _id: { $in: movieIds } };
+    if (title) query.title = { $regex: title, $options: "i" };
 
-  const query = conditions.length > 0 ? { $and: conditions } : {};
+    const movies = await Movie.find(query)
+      .select("_id title banner releaseDate coming showing")
+      .sort({ releaseDate: -1 })
+      .lean();
 
-  const showtimes = await Showtime.find(query)
-    .select("_id startTime theater")
-    .lean();
+    return sendSuccess(res, "All movies retrieved successfully", movies);
+  }),
+);
 
-  return sendSuccess(res, "Filtered showtimes retrieved successfully", showtimes);
-}));
+generalRouter.get(
+  "/movie/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-generalRouter.get("/seatTypes", cacheMiddleware("cache:seatTypes", 3600), asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const seatTypes = await SeatType.find().lean();
-  if (res.sendCached) return res.sendCached("All seat types retrieved successfully", seatTypes);
-  return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
-}));
+    const movie = await Movie.findOne({
+      $or: [{ _id: id }, ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : [])],
+    }).lean();
 
-generalRouter.get("/promotion/all", cacheMiddleware("cache:promotions", 300), asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const promotions = await Promotion.find()
-    .select("banner highlight startDate endDate")
-    .sort({ startDate: -1 })
-    .lean();
+    if (!movie) return sendError(res, "Movie not found", 404);
+    return sendSuccess(res, "Movie retrieved successfully", movie);
+  }),
+);
 
-  if (res.sendCached) return res.sendCached("Promotions retrieved successfully", promotions);
-  return sendSuccess(res, "Promotions retrieved successfully", promotions);
-}))
+generalRouter.get(
+  "/cinema",
+  cacheMiddleware("cache:cinemas", 600),
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const cinemas = await Cinema.find().lean();
+    if (res.sendCached)
+      return res.sendCached("All cinemas retrieved successfully", cinemas);
+    return sendSuccess(res, "All cinemas retrieved successfully", cinemas);
+  }),
+);
 
-generalRouter.get("/promotion/:id", asyncHandler(async (req, res) => {
-  const { id } = req.params;
+generalRouter.get(
+  "/cinema/:id",
+  asyncHandler(async (req, res) => {
+    try {
+      const cinema = await cinemaService.getCinemaDetail(req.params.id);
+      return sendSuccess(res, "Cinema retrieved successfully", cinema);
+    } catch (error) {
+      if (error.statusCode)
+        return sendError(res, error.message, error.statusCode);
+      throw error;
+    }
+  }),
+);
 
-  if (id === "all") {
+generalRouter.get(
+  "/cinemaBranches",
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const { location } = req.query;
+
+    let query = {};
+    if (location) {
+      query.address = { $regex: location, $options: "i" };
+    }
+
+    const cinemas = await Cinema.find(query)
+      .select("branch cinemaName address coordinates")
+      .lean();
+
+    return sendSuccess(res, "Cinema branches retrieved successfully", cinemas);
+  }),
+);
+
+generalRouter.get(
+  "/locations",
+  cacheMiddleware("cache:locations", 600),
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const locations = await Location.find().sort({ _id: 1 }).lean();
+    if (res.sendCached)
+      return res.sendCached("Locations retrieved successfully", locations);
+    return sendSuccess(res, "Locations retrieved successfully", locations);
+  }),
+);
+
+generalRouter.get(
+  "/theaterByCinema",
+  cacheMiddleware("cache:theaterByCinema", 300),
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const theaters = await Cinema.find().populate("theaters").lean();
+    if (res.sendCached)
+      return res.sendCached("All theaters retrieved successfully", theaters);
+    return sendSuccess(res, "All theaters retrieved successfully", theaters);
+  }),
+);
+
+generalRouter.get(
+  "/theaters/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const theaterTarget = await Theater.findById(id).lean();
+    if (!theaterTarget) return sendError(res, "Theater not found", 404);
+    return sendSuccess(res, "Theater retrieved successfully", theaterTarget);
+  }),
+);
+
+generalRouter.get(
+  "/showtime/filter",
+  asyncHandler(async (req, res) => {
+    const { branch, date, idMovie } = req.query;
+
+    const conditions = [];
+
+    if (idMovie) {
+      conditions.push({ id_movie: idMovie });
+    }
+
+    if (branch) {
+      const theaterIds = await Theater.find({
+        $or: [{ branch: branch }, { cinemaName: branch }],
+      }).distinct("_id");
+
+      if (theaterIds.length === 0) {
+        return sendSuccess(
+          res,
+          "Filtered showtimes retrieved successfully",
+          [],
+        );
+      }
+
+      conditions.push({ theater: { $in: theaterIds } });
+    }
+
+    if (date) {
+      const d1 = new Date(date);
+      const d2 = new Date(date);
+      d2.setDate(d2.getDate() + 1);
+      conditions.push({ startTime: { $gte: d1, $lt: d2 } });
+    }
+
+    const query = conditions.length > 0 ? { $and: conditions } : {};
+
+    const rawShowtimes = await Showtime.find(query)
+      .populate("theater", "name branch cinemaName totalSeats")
+      .select("_id startTime theater seats")
+      .lean();
+
+    const showtimes = rawShowtimes.map((st) => {
+      const seats = Array.isArray(st.seats) ? st.seats : [];
+      const bookedCount = seats.filter((s) => Boolean(s?.isBooked)).length;
+      const totalSeats = seats.length || st.theater?.totalSeats || 0;
+      const availableSeats = Math.max(0, totalSeats - bookedCount);
+
+      return {
+        _id: st._id,
+        startTime: st.startTime,
+        theater: st.theater,
+        totalSeats,
+        bookedCount,
+        availableSeats,
+      };
+    });
+
+    return sendSuccess(
+      res,
+      "Filtered showtimes retrieved successfully",
+      showtimes,
+    );
+  }),
+);
+
+generalRouter.get(
+  "/seatTypes",
+  cacheMiddleware("cache:seatTypes", 3600),
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const seatTypes = await SeatType.find().lean();
+    if (res.sendCached)
+      return res.sendCached("All seat types retrieved successfully", seatTypes);
+    return sendSuccess(res, "All seat types retrieved successfully", seatTypes);
+  }),
+);
+
+generalRouter.get(
+  "/promotion/all",
+  cacheMiddleware("cache:promotions", 300),
+  asyncHandler(async (req, res) => {
     addCacheHeader(res);
     const promotions = await Promotion.find()
-      .select("banner startDate endDate")
+      .select("banner highlight startDate endDate")
       .sort({ startDate: -1 })
       .lean();
+
+    if (res.sendCached)
+      return res.sendCached("Promotions retrieved successfully", promotions);
     return sendSuccess(res, "Promotions retrieved successfully", promotions);
-  }
+  }),
+);
 
-  const promotion = await Promotion.findById(id).lean();
-  if (!promotion) return sendError(res, "Promotion not found", 404);
-  return sendSuccess(res, "Promotion retrieved successfully", promotion);
-}))
+generalRouter.get(
+  "/promotion/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-generalRouter.get("/shop/all", asyncHandler(async (req, res) => {
-  addCacheHeader(res);
-  const { area, theater, productName, priceSort } = req.query;
-  const query = { active: true };
-
-  if (productName?.trim()) {
-    query.title = { $regex: productName.trim(), $options: "i" };
-  }
-
-  let areaBranches;
-  if (area && area !== "all") {
-    const location = mongoose.isValidObjectId(area)
-      ? await Location.findById(area).select("cumRap").lean()
-      : await Location.findOne({
-          vungMien: { $regex: `^${area.trim()}$`, $options: "i" },
-        })
-          .select("cumRap")
-          .lean();
-    if (!location) {
-      return sendSuccess(res, "Shop products retrieved successfully", []);
-    }
-
-    const districts = location.cumRap
-      .map((district) => district.trim())
-      .filter(Boolean);
-    if (districts.length === 0) {
-      return sendSuccess(res, "Shop products retrieved successfully", []);
-    }
-
-    const cinemas = await Cinema.find({
-      $or: districts.map((district) => ({
-        address: {
-          $regex: district.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          $options: "i",
-        },
-      })),
-    })
-      .select("branch")
-      .lean();
-    areaBranches = [...new Set(cinemas.map((cinema) => cinema.branch))];
-  }
-
-  let theaterBranch;
-  if (theater && theater !== "all") {
-    if (mongoose.isValidObjectId(theater)) {
-      const selectedTheater = await Theater.findById(theater)
-        .select("branch")
+    if (id === "all") {
+      addCacheHeader(res);
+      const promotions = await Promotion.find()
+        .select("banner startDate endDate")
+        .sort({ startDate: -1 })
         .lean();
-      if (!selectedTheater) {
+      return sendSuccess(res, "Promotions retrieved successfully", promotions);
+    }
+
+    const promotion = await Promotion.findById(id).lean();
+    if (!promotion) return sendError(res, "Promotion not found", 404);
+    return sendSuccess(res, "Promotion retrieved successfully", promotion);
+  }),
+);
+
+generalRouter.get(
+  "/shop/all",
+  asyncHandler(async (req, res) => {
+    addCacheHeader(res);
+    const { area, theater, productName, priceSort } = req.query;
+    const query = { active: true };
+
+    if (productName?.trim()) {
+      query.title = { $regex: productName.trim(), $options: "i" };
+    }
+
+    let areaBranches;
+    if (area && area !== "all") {
+      const location = mongoose.isValidObjectId(area)
+        ? await Location.findById(area).select("cumRap").lean()
+        : await Location.findOne({
+            vungMien: { $regex: `^${area.trim()}$`, $options: "i" },
+          })
+            .select("cumRap")
+            .lean();
+      if (!location) {
         return sendSuccess(res, "Shop products retrieved successfully", []);
       }
-      theaterBranch = selectedTheater.branch;
-    } else {
-      theaterBranch = theater.trim();
+
+      const districts = location.cumRap
+        .map((district) => district.trim())
+        .filter(Boolean);
+      if (districts.length === 0) {
+        return sendSuccess(res, "Shop products retrieved successfully", []);
+      }
+
+      const cinemas = await Cinema.find({
+        $or: districts.map((district) => ({
+          address: {
+            $regex: district.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+            $options: "i",
+          },
+        })),
+      })
+        .select("branch")
+        .lean();
+      areaBranches = [...new Set(cinemas.map((cinema) => cinema.branch))];
     }
-  }
 
-  if (theaterBranch && areaBranches && !areaBranches.includes(theaterBranch)) {
-    return sendSuccess(res, "Shop products retrieved successfully", []);
-  }
+    let theaterBranch;
+    if (theater && theater !== "all") {
+      if (mongoose.isValidObjectId(theater)) {
+        const selectedTheater = await Theater.findById(theater)
+          .select("branch")
+          .lean();
+        if (!selectedTheater) {
+          return sendSuccess(res, "Shop products retrieved successfully", []);
+        }
+        theaterBranch = selectedTheater.branch;
+      } else {
+        theaterBranch = theater.trim();
+      }
+    }
 
-  const branches = theaterBranch ? [theaterBranch] : areaBranches;
-  if (branches) {
-    if (branches.length === 0) {
+    if (
+      theaterBranch &&
+      areaBranches &&
+      !areaBranches.includes(theaterBranch)
+    ) {
       return sendSuccess(res, "Shop products retrieved successfully", []);
     }
 
-    query.$or = branches.map((branch) => ({
-      [`stockByBranch.${branch}`]: { $gt: 0 },
-    }));
-  }
+    const branches = theaterBranch ? [theaterBranch] : areaBranches;
+    if (branches) {
+      if (branches.length === 0) {
+        return sendSuccess(res, "Shop products retrieved successfully", []);
+      }
 
-  const sortQuery =
-    priceSort?.toLowerCase() === "asc"
-      ? { price: 1 }
-      : priceSort?.toLowerCase() === "desc"
-        ? { price: -1 }
-        : { createdAt: -1 };
+      query.$or = branches.map((branch) => ({
+        [`stockByBranch.${branch}`]: { $gt: 0 },
+      }));
+    }
 
-  const shops = await Shop.find(query)
-    .select(
-      "title banner price description stock stockByBranch limitPerCustomer expiryDays options highlight",
-    )
-    .sort(sortQuery)
-    .lean();
+    const sortQuery =
+      priceSort?.toLowerCase() === "asc"
+        ? { price: 1 }
+        : priceSort?.toLowerCase() === "desc"
+          ? { price: -1 }
+          : { createdAt: -1 };
 
-  return sendSuccess(res, "Shop products retrieved successfully", shops);
-}));
-
-generalRouter.get("/shop/:id", asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  if (id === "all") {
-    addCacheHeader(res);
-    const shops = await Shop.find()
-      .select("title banner price")
-      .sort({ createdAt: -1 })
+    const shops = await Shop.find(query)
+      .select(
+        "title banner price description stock stockByBranch limitPerCustomer expiryDays options highlight",
+      )
+      .sort(sortQuery)
       .lean();
+
     return sendSuccess(res, "Shop products retrieved successfully", shops);
-  }
+  }),
+);
 
-  const shop = await Shop.findOne({
-    $or: [
-      { id_shop: id },
-      ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : []),
-    ],
-  }).lean();
+generalRouter.get(
+  "/shop/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-  if (!shop) return sendError(res, "Shop product not found", 404);
-  return sendSuccess(res, "Shop product retrieved successfully", shop);
-}))
+    if (id === "all") {
+      addCacheHeader(res);
+      const shops = await Shop.find()
+        .select("title banner price")
+        .sort({ createdAt: -1 })
+        .lean();
+      return sendSuccess(res, "Shop products retrieved successfully", shops);
+    }
 
+    const shop = await Shop.findOne({
+      $or: [
+        { id_shop: id },
+        ...(id.match(/^[a-f\d]{24}$/i) ? [{ _id: id }] : []),
+      ],
+    }).lean();
 
-generalRouter.use('/notifications', verifyToken, NotificationRouter)
+    if (!shop) return sendError(res, "Shop product not found", 404);
+    return sendSuccess(res, "Shop product retrieved successfully", shop);
+  }),
+);
+
+generalRouter.use("/notifications", verifyToken, NotificationRouter);
 
 export default generalRouter;
