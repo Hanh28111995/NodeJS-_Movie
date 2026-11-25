@@ -275,16 +275,19 @@ export const PaymentService = {
           lang: "vi",
         });
 
-        const url = new URL(momoCfg.endpoint);
+        const url = new URL(momoCfg.endpoint.trim());
+        console.log("Calling MoMo Endpoint:", url.href);
+
         const options = {
           hostname: url.hostname,
           port: url.port || 443,
           path: `${url.pathname}${url.search}`,
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/json; charset=UTF-8",
             "Content-Length": Buffer.byteLength(body),
-            "User-Agent": "Mozilla/5.0",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             Accept: "application/json",
           },
         };
