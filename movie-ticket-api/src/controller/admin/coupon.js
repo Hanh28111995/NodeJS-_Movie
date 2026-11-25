@@ -5,4 +5,4 @@ export const createCoupon = (req, res) => couponService.createNewCoupon(res, req
 export const updateCoupon = (req, res) => couponService.updateExistingCoupon(res, req.params.id, req.body);
 export const deleteCoupon = (req, res) => couponService.removeCoupon(res, req.params.id);
 export const reactivateCoupon = (req, res) => couponService.reactivateCouponService(res, req.params.id);
-export const validateCoupon = (req, res) => couponService.validateCoupon(res, req.body.code);
+export const validateCoupon = (req, res) => couponService.validateCoupon(res, req.body.code, req.body.subtotal);
