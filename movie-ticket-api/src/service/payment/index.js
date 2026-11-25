@@ -284,6 +284,8 @@ export const PaymentService = {
           headers: {
             "Content-Type": "application/json",
             "Content-Length": Buffer.byteLength(body),
+            "User-Agent": "Mozilla/5.0",
+            Accept: "application/json",
           },
         };
 
