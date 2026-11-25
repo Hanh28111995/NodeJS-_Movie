@@ -2,10 +2,22 @@ import * as couponRepository from "../repository/couponRepository.js";
 import { sendError, sendServerError, sendSuccess } from "../helper/client.js";
 import { releaseCouponHold } from "./couponHoldService.js";
 
-const POINT_TO_VND_RATE = 1000; // 1 điểm = 1.000đ (có thể lấy từ config/coupon nếu cần)
 
-const isValidNumber = (val) =>
-  val !== null && val !== undefined && val !== "" && !Number.isNaN(Number(val));
+const POINT_TO_VND_RATE = 1000;
+
+const parseNumericValue = (val) => {
+  if (val === null || val === undefined || val === "") return NaN;
+  if (typeof val === "number") return Number.isFinite(val) ? val : NaN;
+  if (typeof val === "string") {
+    const cleaned = val.replace(/[^\d.-]/g, "").trim();
+    if (!cleaned || cleaned === "-" || cleaned === ".") return NaN;
+    const num = Number(cleaned);
+    return Number.isFinite(num) ? num : NaN;
+  }
+  return NaN;
+};
+
+const isValidNumber = (val) => !Number.isNaN(parseNumericValue(val));
 
 export const calculateDiscount = async (
   code,
@@ -15,7 +27,8 @@ export const calculateDiscount = async (
 ) => {
   if (!code) return 0;
 
-  const coupon = await couponRepository.getCouponByCode(code);
+  const normalizedCode = String(code).trim();
+  const coupon = await couponRepository.getCouponByCode(normalizedCode);
   if (!coupon) throw new Error("COUPON_NOT_FOUND");
   if (!coupon.active) throw new Error("COUPON_INACTIVE");
 
@@ -35,34 +48,31 @@ export const calculateDiscount = async (
     throw new Error("COUPON_OWNER_MISMATCH");
   }
 
-  const cleanSubtotal = Number(subtotal);
-  if (!Number.isFinite(cleanSubtotal) || cleanSubtotal < 0) {
+  const cleanSubtotal = parseNumericValue(subtotal);
+  if (Number.isNaN(cleanSubtotal) || cleanSubtotal < 0) {
     throw new Error("INVALID_SUBTOTAL");
   }
 
   const minSubtotal = isValidNumber(coupon.minSubtotal)
-    ? Number(coupon.minSubtotal)
+    ? parseNumericValue(coupon.minSubtotal)
     : 0;
   if (cleanSubtotal < minSubtotal) {
     throw new Error("COUPON_MIN_SUBTOTAL");
   }
 
   let discountAmount = 0;
-
-  // 1. Trường hợp giảm theo điểm (nếu type là "points" hoặc không có discountPercent)
   const isPointsMode =
     coupon.type === "points" || !isValidNumber(coupon.discountPercent);
 
   if (isPointsMode) {
     const rate = isValidNumber(coupon.pointValue)
-      ? Number(coupon.pointValue)
+      ? parseNumericValue(coupon.pointValue)
       : POINT_TO_VND_RATE;
 
-    // Số điểm muốn dùng: ưu tiên truyền từ options.pointsToUse, fallback sang coupon.points / userPoints nếu có
     const requestedPoints = isValidNumber(options.pointsToUse)
-      ? Number(options.pointsToUse)
+      ? parseNumericValue(options.pointsToUse)
       : isValidNumber(coupon.points)
-        ? Number(coupon.points)
+        ? parseNumericValue(coupon.points)
         : 0;
 
     if (requestedPoints <= 0) {
@@ -71,37 +81,44 @@ export const calculateDiscount = async (
 
     if (
       isValidNumber(coupon.minPoints) &&
-      requestedPoints < Number(coupon.minPoints)
+      requestedPoints < parseNumericValue(coupon.minPoints)
     ) {
       throw new Error("INSUFFICIENT_MIN_POINTS");
     }
 
     const maxAllowedPoints = isValidNumber(options.userPoints)
-      ? Math.max(0, Number(options.userPoints))
+      ? Math.max(0, parseNumericValue(options.userPoints))
       : requestedPoints;
 
     let usablePoints = Math.min(requestedPoints, maxAllowedPoints);
 
     if (isValidNumber(coupon.maxPointsPerOrder)) {
-      usablePoints = Math.min(usablePoints, Number(coupon.maxPointsPerOrder));
+      usablePoints = Math.min(
+        usablePoints,
+        parseNumericValue(coupon.maxPointsPerOrder),
+      );
     }
 
     discountAmount = usablePoints * rate;
 
     if (isValidNumber(coupon.maxDiscount)) {
-      discountAmount = Math.min(discountAmount, Number(coupon.maxDiscount));
+      discountAmount = Math.min(
+        discountAmount,
+        parseNumericValue(coupon.maxDiscount),
+      );
     }
   } else {
-    // 2. Trường hợp giảm theo %
-    const percent = Number(coupon.discountPercent);
+    const percent = parseNumericValue(coupon.discountPercent);
     discountAmount = (cleanSubtotal * percent) / 100;
 
     if (isValidNumber(coupon.maxDiscount)) {
-      discountAmount = Math.min(discountAmount, Number(coupon.maxDiscount));
+      discountAmount = Math.min(
+        discountAmount,
+        parseNumericValue(coupon.maxDiscount),
+      );
     }
   }
 
-  // Không bao giờ vượt quá giá trị đơn hàng và không ra số âm / NaN
   const clampedDiscount = Math.min(Math.max(0, discountAmount), cleanSubtotal);
   return Math.round(clampedDiscount);
 };
