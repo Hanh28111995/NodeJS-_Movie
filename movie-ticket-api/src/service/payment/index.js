@@ -203,18 +203,41 @@ export const PaymentService = {
     // Tạo URL thanh toán, nhúng ticketId vào orderId
     createPaymentUrl: async (res, ticketData) => {
       try {
-        const ticketId = (ticketData._id || ticketData.id)?.toString();
+        const ticketId = (ticketData?._id || ticketData?.id)?.toString();
         if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
 
-        const amount = String(calcTotalPrice(ticketData.seatName));
-        if (!Number(amount))
-          return sendError(res, "Không tính được tổng tiền vé", 400);
-        const orderId = `\({ticketId}__\){Date.now()}`;
-        const requestId = orderId;
-        const orderInfo = buildOrderInfo(ticketData.seatName);
-        const extraData = "";
+        const rawAmount =
+          ticketData?.finalAmount ??
+          ticketData?.totalAmount ??
+          calcTotalPrice(ticketData?.seatName);
+        const numericAmount = Math.round(Number(rawAmount));
 
-        const rawSignature = `accessKey=\({momoConfig.accessKey}&amount=\){amount}&extraData=\({extraData}&ipnUrl=\){momoConfig.ipnUrl}&orderId=\({orderId}&orderInfo=\){orderInfo}&partnerCode=\({momoConfig.partnerCode}&redirectUrl=\){momoConfig.redirectUrl}&requestId=${requestId}&requestType=payWithMethod`;
+        if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+          return sendError(res, "Không tính được tổng tiền vé", 400);
+        }
+
+        const amount = String(numericAmount);
+        const orderId = `${ticketId}__${Date.now()}`;
+        const requestId = orderId;
+        const orderInfo = buildOrderInfo(ticketData?.seatName);
+        const extraData = "";
+        const requestType = "payWithMethod";
+
+        const redirectUrl = momoConfig.redirectUrl || MOMO_RETURN_URL;
+        const ipnUrl = momoConfig.ipnUrl || redirectUrl;
+
+        const rawSignature =
+          `accessKey=${momoConfig.accessKey}` +
+          `&amount=${amount}` +
+          `&extraData=${extraData}` +
+          `&ipnUrl=${ipnUrl}` +
+          `&orderId=${orderId}` +
+          `&orderInfo=${orderInfo}` +
+          `&partnerCode=${momoConfig.partnerCode}` +
+          `&redirectUrl=${redirectUrl}` +
+          `&requestId=${requestId}` +
+          `&requestType=${requestType}`;
+
         const signature = crypto
           .createHmac("sha256", momoConfig.secretKey)
           .update(rawSignature)
@@ -227,10 +250,10 @@ export const PaymentService = {
           amount,
           orderId,
           orderInfo,
-          redirectUrl: MOMO_RETURN_URL,
-          ipnUrl: MOMO_RETURN_URL,
+          redirectUrl,
+          ipnUrl,
           extraData,
-          requestType: "payWithMethod",
+          requestType,
           signature,
           lang: "vi",
         });
@@ -238,7 +261,8 @@ export const PaymentService = {
         const url = new URL(momoConfig.endpoint);
         const options = {
           hostname: url.hostname,
-          path: url.pathname,
+          port: url.port || 443,
+          path: `${url.pathname}${url.search}`,
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -246,24 +270,54 @@ export const PaymentService = {
           },
         };
 
-        return new Promise((resolve) => {
+        return await new Promise((resolve) => {
           const request = https.request(options, (response) => {
             let data = "";
-            response.on("data", (chunk) => (data += chunk));
+            response.on("data", (chunk) => {
+              data += chunk;
+            });
             response.on("end", () => {
-              const result = JSON.parse(data);
-              if (result.resultCode === 0) {
-                resolve(
-                  sendSuccess(res, "Tạo link MoMo thành công", {
-                    paymentUrl: result.payUrl,
-                  }),
+              try {
+                const result = JSON.parse(data);
+                if (Number(result.resultCode) === 0 && result.payUrl) {
+                  return resolve(
+                    sendSuccess(res, "Tạo link MoMo thành công", {
+                      paymentUrl: result.payUrl,
+                    }),
+                  );
+                }
+                return resolve(
+                  sendError(
+                    res,
+                    result.message || "MoMo từ chối tạo giao dịch",
+                    400,
+                  ),
                 );
-              } else {
-                resolve(sendError(res, result.message, 400));
+              } catch (parseErr) {
+                return resolve(
+                  sendError(res, "Phản hồi từ MoMo không hợp lệ", 502),
+                );
               }
             });
           });
-          request.on("error", () => resolve(sendServerError(res)));
+
+          request.setTimeout(8000, () => {
+            request.destroy();
+            resolve(
+              sendError(
+                res,
+                "Cổng thanh toán MoMo phản hồi quá lâu (timeout)",
+                504,
+              ),
+            );
+          });
+
+          request.on("error", (reqErr) => {
+            resolve(
+              sendError(res, `Lỗi kết nối tới MoMo: ${reqErr.message}`, 502),
+            );
+          });
+
           request.write(body);
           request.end();
         });
