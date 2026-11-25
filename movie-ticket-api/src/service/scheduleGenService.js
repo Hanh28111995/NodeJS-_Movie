@@ -74,6 +74,7 @@ class ScheduleService {
   async generateSchedule() {
     const config = await ScheduleConfig.findOne({ isActive: true }).lean();
     if (!config) {
+      console.log("[scheduleGen] Stop: No active configuration found");
       return {
         created: 0,
         skipped: 0,
@@ -88,19 +89,30 @@ class ScheduleService {
     const timeSlots = (config.timeSlots || []).filter(Boolean);
     const generateDays = Math.min(14, Math.max(1, config.generateDays ?? 3));
 
+    console.log("[scheduleGen] Config loaded:", {
+      id: config._id,
+      movies: movies.length,
+      theaters: theaters.length,
+      timeSlots,
+      generateDays,
+    });
+
     if (
       movies.length === 0 ||
       theaters.length === 0 ||
       timeSlots.length === 0
     ) {
+      console.log("[scheduleGen] Stop: Invalid configuration");
       return { created: 0, skipped: 0, message: "Invalid configuration" };
     }
 
     // ---- Load dữ liệu ----
     const theaterDocs = await theaterRepository.findByIds(theaters);
     const allCinemas = await cinemaRepository.findAll();
-    const cinemaMap = Object.fromEntries(
-      allCinemas.map((c) => [c.branch, c._id]),
+    const cinemaMap = new Map(
+      allCinemas
+        .filter((c) => c.branch)
+        .map((c) => [c.branch.trim().toLowerCase(), c._id]),
     );
 
     const seatTypeMap = {};
@@ -122,7 +134,16 @@ class ScheduleService {
     const movieIds = movies.map((m) => m.movie_id.toString());
     const movieDocs = await Movies.find({ _id: { $in: movieIds } }).lean();
     const validMovieIds = new Set(movieDocs.map((m) => m._id.toString()));
+
+    console.log("[scheduleGen] Master data:", {
+      theaterDocs: theaterDocs.length,
+      cinemas: allCinemas.length,
+      cinemaBranches: [...cinemaMap.keys()],
+      validMovies: validMovieIds.size,
+    });
+
     if (validMovieIds.size === 0) {
+      console.log("[scheduleGen] Stop: No movies exist");
       return { created: 0, skipped: 0, message: "No movies exist" };
     }
 
@@ -135,7 +156,6 @@ class ScheduleService {
       const dayStartNative = day.toDate();
       const nextDayNative = day.add(1, "day").toDate();
 
-      // Phim còn trong cửa sổ chiếu của ngày này
       const activeMovies = movies
         .filter((m) => {
           const s = m.startDate ? dayStart(new Date(m.startDate)) : null;
@@ -145,6 +165,11 @@ class ScheduleService {
           return true;
         })
         .filter((m) => validMovieIds.has(m.movie_id.toString()));
+
+      console.log("[scheduleGen] Day check:", {
+        day: day.format("YYYY-MM-DD"),
+        activeMovies: activeMovies.length,
+      });
 
       if (activeMovies.length === 0) continue;
 
@@ -158,26 +183,28 @@ class ScheduleService {
           theaterDoc.seats.length === 0
         ) {
           skipped++;
+          console.log(
+            "[scheduleGen] Skip theater (missing or no seats):",
+            theaterId,
+          );
           continue;
         }
 
-        const cinemaMap = new Map(
-          allCinemas
-            .filter((c) => c.branch)
-            .map((c) => [c.branch.trim(), c._id]),
-        );
-        const branchKey = (
-          theaterDoc.branch ||
-          theaterDoc.cinemaName ||
-          ""
-        ).trim();
+        const branchKey = (theaterDoc.branch || theaterDoc.cinemaName || "")
+          .trim()
+          .toLowerCase();
         const cinemaId = cinemaMap.get(branchKey);
         if (!cinemaId) {
           skipped++;
+          console.log("[scheduleGen] Skip theater (cinema not matched):", {
+            theaterId,
+            branch: theaterDoc.branch,
+            cinemaName: theaterDoc.cinemaName,
+            branchKey,
+          });
           continue;
         }
 
-        // Lấy các suất đã có trong ngày để chỉ bỏ qua đúng slot bị trùng
         const existing = await Showtime.find({
           theater: theaterId,
           startTime: {
@@ -192,7 +219,6 @@ class ScheduleService {
           existing.map((item) => new Date(item.startTime).getTime()),
         );
 
-        // Tạo seats template với price/color từ seatType
         const seatsTemplate = theaterDoc.seats.map((s) => {
           const st = seatTypeMap[s.seatType?.toString()];
           return {
@@ -204,7 +230,6 @@ class ScheduleService {
           };
         });
 
-        // Round-robin phim theo theater
         const dayOffset = Math.max(
           0,
           theaterDocs.findIndex((t) => t._id.toString() === theaterId),
@@ -232,9 +257,16 @@ class ScheduleService {
           });
         }
 
+        console.log("[scheduleGen] Theater slots:", {
+          day: day.format("YYYY-MM-DD"),
+          theaterId,
+          existingCount: existing.length,
+          toInsertCount: toInsert.length,
+          skippedSoFar: skipped,
+        });
+
         if (toInsert.length === 0) continue;
 
-        // Index unique (theater + startTime) bảo vệ chống nhân bản khi chạy song song
         try {
           const inserted = await Showtime.insertMany(toInsert, {
             ordered: false,
@@ -258,18 +290,19 @@ class ScheduleService {
       }
     }
 
-    // Dọn suất QUÁ KHỨ chưa có vé (không bao giờ đụng suất tương lai / có vé)
     const pastLimit = today.subtract(1, "day").toDate();
     await Showtime.deleteMany({
       startTime: { $lt: pastLimit },
       "seats.isBooked": { $ne: true },
     });
 
-    return {
+    const result = {
       created,
       skipped,
       message: `Generated ${created} showtimes (${skipped} skipped existing slots)`,
     };
+    console.log("[scheduleGen] Done:", result);
+    return result;
   }
 
   // ---------- Hỗ trợ admin: xóa suất TRỐNG để tái sinh ----------
