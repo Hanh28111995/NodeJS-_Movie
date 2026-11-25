@@ -77,34 +77,47 @@ export const PaymentService = {
         const ticketId = (ticketData._id || ticketData.id)?.toString();
         if (!ticketId) return sendError(res, "Thiếu ticket id", 400);
 
-        const amount = calcTotalPrice(ticketData.seatName);
-        if (!amount) return sendError(res, "Không tính được tổng tiền vé", 400);
+        const rawAmount =
+          ticketData?.finalAmount ??
+          ticketData?.totalAmount ??
+          calcTotalPrice(ticketData.seatName);
+        const amount = Math.round(Number(rawAmount));
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return sendError(res, "Không tính được tổng tiền vé", 400);
+        }
 
-        // Định dạng: yyyyMMddHHmmss
-        const createDate = new Date()
+        // Định dạng: yyyyMMddHHmmss theo múi giờ Việt Nam (UTC+7)
+        const vnDate = new Date(Date.now() + 7 * 60 * 60 * 1000);
+        const createDate = vnDate
           .toISOString()
           .replace(/[-:T.Z]/g, "")
           .slice(0, 14);
-        const orderId = `\({ticketId}__\){Date.now()}`;
+        const orderId = `${ticketId}__${Date.now()}`;
         const orderInfo = buildOrderInfo(ticketData.seatName);
 
-        const tmnCode = process.env.VNP_TMNCODE;
-        const hashSecret = process.env.VNP_HASHSECRET;
-        const vnpUrl = process.env.VNP_URL;
+        const tmnCode = process.env.VNP_TMNCODE?.trim();
+        const hashSecret = process.env.VNP_HASHSECRET?.trim();
+        const vnpUrl = process.env.VNP_URL?.trim();
+        const returnUrl = (
+          process.env.VNP_RETURN_URL || VNP_RETURN_URL
+        )?.trim();
 
-        // Lấy IP thực tế của người dùng
+        // Lấy IP đầu tiên sạch sẽ của người dùng trên proxy / Vercel
+        const forwarded = req.headers["x-forwarded-for"];
         const ipAddr =
-          req.headers["x-forwarded-for"] ||
-          req.connection.remoteAddress ||
-          req.socket.remoteAddress ||
+          (Array.isArray(forwarded)
+            ? forwarded[0]
+            : forwarded?.split(",")[0]?.trim()) ||
+          req.socket?.remoteAddress ||
+          req.connection?.remoteAddress ||
           "127.0.0.1";
 
-        if (!tmnCode || !hashSecret || !vnpUrl) {
+        if (!tmnCode || !hashSecret || !vnpUrl || !returnUrl) {
           console.error("[VNPay] Missing env configuration");
           return sendError(res, "Cấu hình VNPay chưa đầy đủ", 500);
         }
 
-        let vnpParams = {
+        const vnpParams = {
           vnp_Version: "2.1.0",
           vnp_Command: "pay",
           vnp_TmnCode: tmnCode,
@@ -114,7 +127,7 @@ export const PaymentService = {
           vnp_OrderInfo: orderInfo,
           vnp_OrderType: "other",
           vnp_Amount: amount * 100,
-          vnp_ReturnUrl: VNP_RETURN_URL,
+          vnp_ReturnUrl: returnUrl,
           vnp_IpAddr: ipAddr,
           vnp_CreateDate: createDate,
         };
@@ -125,8 +138,8 @@ export const PaymentService = {
           .update(Buffer.from(signData, "utf-8"))
           .digest("hex");
 
-        vnpParams["vnp_SecureHash"] = signed;
-        const paymentUrl = `\({vnpUrl}?\){toQueryString(vnpParams)}`;
+        vnpParams.vnp_SecureHash = signed;
+        const paymentUrl = `${vnpUrl}?${toQueryString(vnpParams)}`;
 
         return sendSuccess(res, "Tạo link VNPay thành công", { paymentUrl });
       } catch (err) {
@@ -138,7 +151,7 @@ export const PaymentService = {
     // VNPay redirect về đây sau khi thanh toán
     verifyReturn: async (res, query) => {
       try {
-        const hashSecret = process.env.VNP_HASHSECRET;
+        const hashSecret = process.env.VNP_HASHSECRET?.trim();
         const secureHash = query["vnp_SecureHash"];
         const params = { ...query };
         delete params["vnp_SecureHash"];
@@ -166,20 +179,22 @@ export const PaymentService = {
             ? await ticketRepository.completeTicket(ticketId)
             : null;
 
-          const uid = String(ticket.user_id?._id || ticket.user_id);
-          if (ticket && ticket.couponCode) {
-            await couponService.consumeCoupon(ticket.couponCode, uid);
+          if (ticket) {
+            const uid = String(ticket.user_id?._id || ticket.user_id);
+            if (ticket.couponCode) {
+              await couponService.consumeCoupon(ticket.couponCode, uid);
+            }
           }
 
           return res.redirect(
-            `\({FRONTEND_URL}/payment-result?status=success&method=vnpay&ticketId=\){ticketId}`,
+            `${FRONTEND_URL}/payment-result?status=success&method=vnpay&ticketId=${ticketId}`,
           );
         } else {
           const ticket = ticketId
             ? await ticketRepository.cancelTicket(ticketId)
             : null;
 
-          // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount[cite: 5]
+          // Thanh toán thất bại/hủy: Chỉ giải phóng hold, không tăng usedCount
           if (ticket && ticket.couponCode) {
             await couponService.releaseCouponHoldOnly(
               ticket.couponCode,
@@ -188,10 +203,11 @@ export const PaymentService = {
           }
 
           return res.redirect(
-            `\({FRONTEND_URL}/payment-result?status=failed&method=vnpay&code=\){responseCode}`,
+            `${FRONTEND_URL}/payment-result?status=failed&method=vnpay&code=${responseCode}`,
           );
         }
       } catch (err) {
+        console.error("[VNPay verifyReturn] ERROR:", err.message);
         return res.redirect(`${FRONTEND_URL}/payment-result?status=error`);
       }
     },
