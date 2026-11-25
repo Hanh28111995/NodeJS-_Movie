@@ -53,7 +53,6 @@ generalRouter.get("/showBanners", cacheMiddleware("cache:banners", 600),asyncHan
 
 generalRouter.get("/movie/all", asyncHandler(async (req, res) => {
   const { title } = req.query;
-
   // Lấy config lịch chiếu đang active → lọc phim còn trong cửa sổ chiếu (startDate ≤ now ≤ endDate)
   const config = await ScheduleConfig.findOne({ isActive: true }).lean();
   const now = new Date();
