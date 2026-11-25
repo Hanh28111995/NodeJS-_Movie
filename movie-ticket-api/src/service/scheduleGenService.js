@@ -74,7 +74,11 @@ class ScheduleService {
   async generateSchedule() {
     const config = await ScheduleConfig.findOne({ isActive: true }).lean();
     if (!config) {
-      return { created: 0, skipped: 0, message: "No active configuration found" };
+      return {
+        created: 0,
+        skipped: 0,
+        message: "No active configuration found",
+      };
     }
 
     const movies = (config.movies || []).filter((m) => m?.movie_id);
@@ -84,7 +88,11 @@ class ScheduleService {
     const timeSlots = (config.timeSlots || []).filter(Boolean);
     const generateDays = Math.min(14, Math.max(1, config.generateDays ?? 3));
 
-    if (movies.length === 0 || theaters.length === 0 || timeSlots.length === 0) {
+    if (
+      movies.length === 0 ||
+      theaters.length === 0 ||
+      timeSlots.length === 0
+    ) {
       return { created: 0, skipped: 0, message: "Invalid configuration" };
     }
 
@@ -153,7 +161,17 @@ class ScheduleService {
           continue;
         }
 
-        const cinemaId = cinemaMap[theaterDoc.cinemaName];
+        const cinemaMap = new Map(
+          allCinemas
+            .filter((c) => c.branch)
+            .map((c) => [c.branch.trim(), c._id]),
+        );
+        const branchKey = (
+          theaterDoc.branch ||
+          theaterDoc.cinemaName ||
+          ""
+        ).trim();
+        const cinemaId = cinemaMap.get(branchKey);
         if (!cinemaId) {
           skipped++;
           continue;
