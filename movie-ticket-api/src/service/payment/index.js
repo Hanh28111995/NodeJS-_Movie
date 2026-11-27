@@ -292,19 +292,18 @@ export const PaymentService = {
           partnerCode: momoCfg.partnerCode,
           accessKey: momoCfg.accessKey,
           requestId,
-          amount,
+          amount: numericAmount, // Truyền kiểu số (Number) thay vì String
           orderId,
           orderInfo,
           redirectUrl,
           ipnUrl,
           extraData,
-          requestType,
+          requestType: "captureWallet", // Ổn định nhất cho môi trường test
           signature,
           lang: "vi",
         });
 
         const url = new URL(momoCfg.endpoint.trim());
-        console.log("Calling MoMo Endpoint:", url.href);
 
         const options = {
           hostname: url.hostname,
@@ -312,11 +311,9 @@ export const PaymentService = {
           path: `${url.pathname}${url.search}`,
           method: "POST",
           headers: {
-            "Content-Type": "application/json; charset=UTF-8",
+            "Content-Type": "application/json",
             "Content-Length": Buffer.byteLength(body),
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            Accept: "application/json",
+            // Đã bỏ User-Agent giả lập trình duyệt để tránh WAF chặn 403
           },
         };
 
